@@ -2,12 +2,27 @@
   "name": "@saas-mirror/linear",
   "version": "0.1.0",
   "private": true,
-  "main": "src/index.ts",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
   "scripts": {
     "build": "tsc",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
-    "@linear/sdk": "^29.0.0"
+    "@saas-mirror/core": "workspace:*",
+    "graphql": "^16.0.0",
+    "graphql-request": "^7.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "vitest": "^2.0.0"
   }
 }

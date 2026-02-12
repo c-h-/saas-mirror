@@ -2,20 +2,26 @@
   "name": "saas-mirror",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "description": "Local replication of SaaS data for embedding/search",
   "workspaces": [
     "packages/*",
     "adapters/*"
   ],
   "scripts": {
-    "build": "turbo build",
-    "lint": "turbo lint",
-    "typecheck": "turbo typecheck",
-    "sync": "tsx src/cli.ts sync",
-    "sync:full": "tsx src/cli.ts sync --full"
+    "build": "tsc -b packages/core && tsc -b adapters/linear && tsc -b adapters/slack && tsc -b adapters/gmail && tsc -b adapters/notion",
+    "typecheck": "tsc --noEmit -p packages/core && tsc --noEmit -p adapters/linear && tsc --noEmit -p adapters/slack && tsc --noEmit -p adapters/gmail && tsc --noEmit -p adapters/notion",
+    "test": "vitest run",
+    "sync": "node --import tsx/esm packages/core/src/cli.ts sync",
+    "sync:full": "node --import tsx/esm packages/core/src/cli.ts sync --full"
   },
   "engines": {
     "node": ">=20"
   },
-  "packageManager": "yarn@4.6.0"
+  "packageManager": "yarn@4.6.0",
+  "devDependencies": {
+    "tsx": "^4.0.0",
+    "typescript": "^5.4.0",
+    "vitest": "^2.0.0"
+  }
 }

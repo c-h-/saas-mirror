@@ -5,6 +5,22 @@
 
 ---
 
+## Implementation Status
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| Core Framework | **Complete** | types, rate-limiter, state, output, retry, slugify, logger, engine, CLI |
+| Linear Adapter | **Complete** | GraphQL client, queries, writer, adapter (full + incremental sync) |
+| Slack Adapter | **Complete** | API wrapper, transform (mrkdwn→md), writer, adapter (full + incremental) |
+| Gmail Adapter | **Complete** | Client, MIME parser, writer, adapter (full + incremental + differential) |
+| Notion Adapter | **Complete** | API, block renderer (all block types), writer, adapter (full + incremental) |
+| Core Tests | **Complete** | 42 tests: slugify, retry, state, output, rate-limiter, engine |
+| Adapter Tests | **Complete** | Transform, writer, renderer, MIME parser tests for all adapters |
+| README | **Complete** | Setup, configuration, usage, cron scheduling, architecture |
+| TypeScript | **Passing** | All 5 packages compile cleanly |
+
+---
+
 ## Executive Summary
 
 This plan generalizes the four adapter-specific plans into a unified architecture. The goal: a single system where adding a new SaaS adapter means implementing a well-defined interface, with all shared concerns (rate limiting, state management, output rendering, error handling, resumability) handled by the core framework.

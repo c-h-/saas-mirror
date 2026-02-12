@@ -6,3 +6,5 @@ dist/
 .turbo/
 data/
 !data/.gitkeep
+.pnp.*
+.yarn/

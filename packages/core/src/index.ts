@@ -1,42 +1,37 @@
-/** Shared adapter interface for all SaaS mirrors. */
-export interface SyncOptions {
-  /** Full hydration (all data) vs incremental (changes since last sync). */
-  mode: "full" | "incremental";
-  /** Where to write output files. */
-  outputDir: string;
-  /** Path to sync state (cursors, timestamps, etc). */
-  stateFile: string;
-}
+// Types
+export type {
+  Adapter,
+  AdapterState,
+  SyncContext,
+  SyncResult,
+  SyncError,
+  SyncEngineConfig,
+  AdapterRegistration,
+  RateLimiter,
+  RateLimiterConfig,
+  Logger,
+  OutputWriter,
+  PersistedState,
+} from "./types.js";
 
-export interface SyncResult {
-  adapter: string;
-  itemsSynced: number;
-  errors: string[];
-  durationMs: number;
-}
+// Rate limiter
+export { TokenBucketRateLimiter, createRateLimiter } from "./rate-limiter.js";
 
-export interface Adapter {
-  name: string;
-  sync(options: SyncOptions): Promise<SyncResult>;
-}
+// State management
+export { StateManager } from "./state.js";
 
-/** Sync state persisted between runs for incremental sync. */
-export interface SyncState {
-  lastSyncAt: string; // ISO timestamp
-  cursors: Record<string, string>; // adapter-specific cursors
-  metadata: Record<string, unknown>;
-}
+// Output writer
+export { FileOutputWriter, createOutputWriter } from "./output.js";
 
-export function loadState(path: string): SyncState | null {
-  try {
-    const fs = require("fs");
-    return JSON.parse(fs.readFileSync(path, "utf-8"));
-  } catch {
-    return null;
-  }
-}
+// Retry helper
+export { withRetry } from "./retry.js";
+export type { RetryOptions } from "./retry.js";
 
-export function saveState(path: string, state: SyncState): void {
-  const fs = require("fs");
-  fs.writeFileSync(path, JSON.stringify(state, null, 2));
-}
+// Slug generator
+export { slugify, uniqueSlug, sanitizeFilename } from "./slugify.js";
+
+// Logger
+export { ConsoleLogger, createLogger } from "./logger.js";
+
+// Sync engine
+export { SyncEngine } from "./engine.js";
