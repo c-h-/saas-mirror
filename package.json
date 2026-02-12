@@ -1,0 +1,21 @@
+{
+  "name": "saas-mirror",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local replication of SaaS data for embedding/search",
+  "workspaces": [
+    "packages/*",
+    "adapters/*"
+  ],
+  "scripts": {
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "sync": "tsx src/cli.ts sync",
+    "sync:full": "tsx src/cli.ts sync --full"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "yarn@4.6.0"
+}

@@ -1,0 +1,13 @@
+{
+  "name": "@saas-mirror/linear",
+  "version": "0.1.0",
+  "private": true,
+  "main": "src/index.ts",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@linear/sdk": "^29.0.0"
+  }
+}
