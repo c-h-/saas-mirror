@@ -162,4 +162,110 @@ program
     }
   });
 
+program
+  .command("daemon")
+  .description("Run as a long-lived daemon with periodic sync")
+  .option("--interval <minutes>", "Minutes between sync cycles", "15")
+  .option("--output <dir>", "Output directory", "./data")
+  .action(async (opts) => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+
+    const intervalMs = parseInt(opts.interval, 10) * 60_000;
+    const outputDir = opts.output;
+    const adapters = await loadAdapters();
+
+    if (adapters.length === 0) {
+      console.error(
+        "No adapters configured. Set API credentials in .env file.",
+      );
+      process.exit(1);
+    }
+
+    const engine = new SyncEngine({
+      outputDir,
+      stateDir: outputDir,
+      adapters,
+    });
+
+    let shuttingDown = false;
+
+    const shutdown = () => {
+      if (shuttingDown) return;
+      shuttingDown = true;
+      console.log("\n[daemon] Graceful shutdown requested — finishing current sync...");
+    };
+    process.on("SIGINT", shutdown);
+    process.on("SIGTERM", shutdown);
+
+    console.log(`[daemon] Starting with ${adapters.length} adapters: ${adapters.map((a) => a.adapter.name).join(", ")}`);
+    console.log(`[daemon] Sync interval: ${opts.interval} minutes`);
+
+    // Phase 1: Check each adapter's hydration state and run full sync if needed
+    console.log("[daemon] Checking adapter hydration state...");
+    for (const reg of adapters) {
+      if (shuttingDown) break;
+      const name = reg.adapter.name;
+      const stateFile = path.join(outputDir, name, "_meta", "state.json");
+
+      let needsHydration = true;
+      try {
+        const raw = fs.readFileSync(stateFile, "utf-8");
+        const state = JSON.parse(raw);
+        if (state.lastSyncAt) {
+          console.log(`[daemon] ${name}: hydrated (last sync ${state.lastSyncAt})`);
+          needsHydration = false;
+        }
+      } catch {
+        // No state file — needs hydration
+      }
+
+      if (needsHydration) {
+        console.log(`[daemon] ${name}: not hydrated — running full sync`);
+        try {
+          const result = await engine.syncOne(name, "full");
+          console.log(
+            `[daemon] ${name}: full sync complete — ${result.itemsSynced} synced, ${result.itemsFailed} failed`,
+          );
+          if (result.errors.length > 0) {
+            for (const err of result.errors.slice(0, 3)) {
+              console.log(`[daemon]   ✗ ${err.entity}: ${err.error}`);
+            }
+          }
+        } catch (err) {
+          console.error(`[daemon] ${name}: full sync failed — ${err instanceof Error ? err.message : String(err)}`);
+        }
+      }
+    }
+
+    if (shuttingDown) {
+      console.log("[daemon] Shutdown during hydration. Exiting.");
+      process.exit(0);
+    }
+
+    // Phase 2: Enter sync loop
+    console.log("[daemon] All adapters checked. Entering sync loop.");
+
+    while (!shuttingDown) {
+      // Wait for next cycle
+      const nextSync = new Date(Date.now() + intervalMs);
+      console.log(`[daemon] Next sync at ${nextSync.toLocaleTimeString()} (in ${opts.interval} min)`);
+
+      // Sleep in 1-second increments so we can respond to shutdown quickly
+      const sleepUntil = Date.now() + intervalMs;
+      while (Date.now() < sleepUntil && !shuttingDown) {
+        await new Promise((resolve) => setTimeout(resolve, 1_000));
+      }
+
+      if (shuttingDown) break;
+
+      console.log("[daemon] Starting sync cycle...");
+      const results = await engine.syncAll("incremental");
+      printResults(results);
+    }
+
+    console.log("[daemon] Shutdown complete.");
+    process.exit(0);
+  });
+
 program.parse();

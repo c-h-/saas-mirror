@@ -13,7 +13,8 @@
     "typecheck": "tsc --noEmit -p packages/core && tsc --noEmit -p adapters/linear && tsc --noEmit -p adapters/slack && tsc --noEmit -p adapters/gmail && tsc --noEmit -p adapters/notion && tsc --noEmit -p adapters/gog",
     "test": "vitest run",
     "sync": "node --import tsx/esm packages/core/src/cli.ts sync",
-    "sync:full": "node --import tsx/esm packages/core/src/cli.ts sync --full"
+    "sync:full": "node --import tsx/esm packages/core/src/cli.ts sync --full",
+    "daemon": "node --import tsx/esm packages/core/src/cli.ts daemon"
   },
   "engines": {
     "node": ">=20"

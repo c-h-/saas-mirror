@@ -291,8 +291,9 @@ export class NotionApi {
         parentId: blockId,
       };
 
-      // Recursively fetch children
-      if (node.hasChildren) {
+      // Recursively fetch children — but skip child_page and child_database
+      // blocks, which are synced separately by the tree walker
+      if (node.hasChildren && blockType !== "child_page" && blockType !== "child_database") {
         // For synced_block references, fetch from the original block
         if (blockType === "synced_block" && typeContent.synced_from) {
           const syncedFrom = typeContent.synced_from as { block_id: string } | null;
