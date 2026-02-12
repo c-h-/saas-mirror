@@ -4,7 +4,7 @@ Local replication of SaaS data (Slack, Notion, Linear, Gmail) into Markdown file
 
 ## Features
 
-- **4 adapters**: Slack, Notion, Linear, Gmail
+- **5 adapters**: Slack, Notion, Linear, Gmail (raw OAuth2), GOG (Gmail via `gog` CLI)
 - **Full hydration + incremental sync**: first run fetches everything; subsequent runs fetch only changes
 - **Crash-resumable**: state checkpointed after each entity batch — interrupted syncs resume where they left off
 - **Markdown + YAML frontmatter output**: every document is RAG-ready, with structured metadata in frontmatter and JSON sidecars
@@ -39,7 +39,8 @@ adapters/
   slack/            Slack Conversations API adapter
   notion/           Notion Search + Blocks API adapter
   linear/           Linear GraphQL API adapter
-  gmail/            Gmail REST API adapter
+  gmail/            Gmail REST API adapter (raw OAuth2 credentials)
+  gog/              Gmail via `gog` CLI adapter (OAuth handled by keyring)
 data/               Local output directory (gitignored)
 ```
 
@@ -113,6 +114,17 @@ Copy `.env.example` to `.env.local` and fill in your credentials:
 | `GMAIL_BATCH_SIZE` | Messages per page when listing (default: `500`, max: `500`) |
 | `GMAIL_CONCURRENCY` | Parallel message fetches (default: `2`) |
 
+#### GOG (Gmail via `gog` CLI)
+
+The GOG adapter uses the [`gog` CLI](https://github.com/c-h-/gog) to access Gmail. The `gog` CLI handles OAuth via its own keyring, so no raw OAuth2 credentials are needed.
+
+| Variable | Description |
+|----------|-------------|
+| `GOG_ACCOUNT` | Gmail account email (e.g., `charlie@kindo.ai`). Required to enable the adapter. |
+| `GOG_PATH` | Path to `gog` binary (default: `gog` on PATH, or `/opt/homebrew/bin/gog`) |
+
+Prerequisites: `gog` must be installed and authenticated (`gog auth login`).
+
 ### Output Directory
 
 All output is written to `./data/<adapter-name>/`. The `data/` directory is gitignored.
@@ -165,12 +177,18 @@ data/
 │   ├── projects/{slug}.md
 │   ├── attachments/{TEAM-123}/{filename}
 │   └── _meta/{teams,users,labels,workflow-states,cycles}.json
-└── gmail/
+├── gmail/
+│   ├── messages/{msg-id}.md
+│   ├── messages/{msg-id}.meta.json
+│   ├── threads/{thread-id}.md
+│   ├── attachments/{msg-id}/{filename}
+│   └── _labels.json
+└── gog/
     ├── messages/{msg-id}.md
     ├── messages/{msg-id}.meta.json
     ├── threads/{thread-id}.md
     ├── attachments/{msg-id}/{filename}
-    └── _labels.json
+    └── _meta/labels.json
 ```
 
 ## Sync Modes
@@ -189,6 +207,7 @@ Fetches only changes since the last sync. Each adapter uses the optimal change d
 | Notion | `last_edited_time` comparison | `pageLastEdited` |
 | Linear | `updatedAt` GraphQL filter | `lastSyncAt` |
 | Gmail | History API with `historyId` | `cursors.historyId` |
+| GOG | History API via `gog gmail history` | `metadata.historyId` |
 
 If state is missing or stale, adapters automatically fall back to full sync.
 

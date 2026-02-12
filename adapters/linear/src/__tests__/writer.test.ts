@@ -681,13 +681,13 @@ describe("LinearWriter", () => {
       expect(content).toContain("completedAt:");
     });
 
-    it("includes cancelledAt when present", async () => {
-      const issue = makeIssue({ cancelledAt: "2024-01-20T00:00:00.000Z" });
+    it("includes canceledAt when present", async () => {
+      const issue = makeIssue({ canceledAt: "2024-01-20T00:00:00.000Z" });
       const lookups = makeLookupMaps();
       await writer.writeIssue(issue, "ENG", lookups);
 
       const content = readText(path.join(tmpDir, "issues/ENG/ENG-42.md"));
-      expect(content).toContain("cancelledAt:");
+      expect(content).toContain("canceledAt:");
     });
 
     it("includes relations in frontmatter", async () => {

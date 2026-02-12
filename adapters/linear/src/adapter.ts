@@ -512,7 +512,7 @@ export class LinearAdapter implements Adapter {
       updatedAt: node.updatedAt,
       archivedAt: node.archivedAt ?? undefined,
       completedAt: node.completedAt ?? undefined,
-      cancelledAt: node.cancelledAt ?? undefined,
+      canceledAt: node.canceledAt ?? undefined,
       relations,
       comments,
       attachments,

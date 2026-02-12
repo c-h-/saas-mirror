@@ -129,7 +129,7 @@ export class LinearWriter {
     fm.archived = issue.archivedAt != null;
 
     if (issue.completedAt) fm.completedAt = issue.completedAt;
-    if (issue.cancelledAt) fm.cancelledAt = issue.cancelledAt;
+    if (issue.canceledAt) fm.canceledAt = issue.canceledAt;
     if (issue.archivedAt) fm.archivedAt = issue.archivedAt;
 
     // Relations

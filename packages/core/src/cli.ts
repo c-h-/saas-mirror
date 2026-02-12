@@ -5,6 +5,7 @@ import { SyncEngine } from "./engine.js";
 import type { AdapterRegistration, SyncResult } from "./types.js";
 
 loadDotenv();
+loadDotenv({ path: ".env.local", override: true });
 
 async function loadAdapters(): Promise<AdapterRegistration[]> {
   const registrations: AdapterRegistration[] = [];
@@ -25,7 +26,7 @@ async function loadAdapters(): Promise<AdapterRegistration[]> {
     if (process.env.NOTION_TOKEN) {
       registrations.push({
         adapter: new NotionAdapter(),
-        rateLimiterConfig: { maxRequests: 3, windowMs: 1_000 },
+        rateLimiterConfig: { maxRequests: 3, windowMs: 1_000, minDelayMs: 200 },
       });
     }
   } catch { /* adapter not installed */ }
@@ -46,6 +47,16 @@ async function loadAdapters(): Promise<AdapterRegistration[]> {
       registrations.push({
         adapter: new GmailAdapter(),
         rateLimiterConfig: { maxUnitsPerWindow: 14_000, unitsWindowMs: 60_000 },
+      });
+    }
+  } catch { /* adapter not installed */ }
+
+  try {
+    const { GogAdapter } = await import("@saas-mirror/gog");
+    if (process.env.GOG_ACCOUNT || process.env.GOG_PATH) {
+      registrations.push({
+        adapter: new GogAdapter(),
+        rateLimiterConfig: { maxRequests: 20, windowMs: 1_000 },
       });
     }
   } catch { /* adapter not installed */ }
@@ -121,7 +132,7 @@ program
     const fs = await import("node:fs");
     const path = await import("node:path");
 
-    const adapterNames = ["slack", "notion", "linear", "gmail"];
+    const adapterNames = ["slack", "notion", "linear", "gmail", "gog"];
     for (const name of adapterNames) {
       const stateFile = path.join(opts.output, name, "_meta", "state.json");
       try {

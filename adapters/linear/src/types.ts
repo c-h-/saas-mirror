@@ -111,7 +111,7 @@ export interface IssueRecord {
   updatedAt: string;
   archivedAt?: string;
   completedAt?: string;
-  cancelledAt?: string;
+  canceledAt?: string;
   relations: IssueRelation[];
   comments: CommentRecord[];
   attachments: AttachmentRecord[];
@@ -236,7 +236,7 @@ export interface IssueNode {
   updatedAt: string;
   archivedAt: string | null;
   completedAt: string | null;
-  cancelledAt: string | null;
+  canceledAt: string | null;
   state: { id: string; name: string; type: string };
   assignee: { id: string } | null;
   creator: { id: string } | null;

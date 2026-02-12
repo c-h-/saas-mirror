@@ -146,7 +146,7 @@ const ISSUE_FIELDS = `
   updatedAt
   archivedAt
   completedAt
-  cancelledAt
+  canceledAt
   state {
     id
     name
@@ -221,7 +221,7 @@ export const TEAM_ISSUES_QUERY = /* GraphQL */ `
   query TeamIssues($teamId: String!, $after: String) {
     team(id: $teamId) {
       issues(
-        first: 50
+        first: 20
         after: $after
         orderBy: updatedAt
         includeArchived: true
@@ -239,10 +239,10 @@ export const TEAM_ISSUES_QUERY = /* GraphQL */ `
 `;
 
 export const TEAM_ISSUES_INCREMENTAL_QUERY = /* GraphQL */ `
-  query UpdatedTeamIssues($teamId: String!, $since: DateTime!, $after: String) {
+  query UpdatedTeamIssues($teamId: String!, $since: DateTimeOrDuration!, $after: String) {
     team(id: $teamId) {
       issues(
-        first: 50
+        first: 20
         after: $after
         filter: { updatedAt: { gt: $since } }
         orderBy: updatedAt

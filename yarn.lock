@@ -628,6 +628,16 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@saas-mirror/gog@workspace:adapters/gog":
+  version: 0.0.0-use.local
+  resolution: "@saas-mirror/gog@workspace:adapters/gog"
+  dependencies:
+    "@saas-mirror/core": "workspace:*"
+    typescript: "npm:^5.4.0"
+    vitest: "npm:^2.0.0"
+  languageName: unknown
+  linkType: soft
+
 "@saas-mirror/linear@workspace:adapters/linear":
   version: 0.0.0-use.local
   resolution: "@saas-mirror/linear@workspace:adapters/linear"

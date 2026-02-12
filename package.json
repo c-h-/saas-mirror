@@ -9,8 +9,8 @@
     "adapters/*"
   ],
   "scripts": {
-    "build": "tsc -b packages/core && tsc -b adapters/linear && tsc -b adapters/slack && tsc -b adapters/gmail && tsc -b adapters/notion",
-    "typecheck": "tsc --noEmit -p packages/core && tsc --noEmit -p adapters/linear && tsc --noEmit -p adapters/slack && tsc --noEmit -p adapters/gmail && tsc --noEmit -p adapters/notion",
+    "build": "tsc -b packages/core && tsc -b adapters/linear && tsc -b adapters/slack && tsc -b adapters/gmail && tsc -b adapters/notion && tsc -b adapters/gog",
+    "typecheck": "tsc --noEmit -p packages/core && tsc --noEmit -p adapters/linear && tsc --noEmit -p adapters/slack && tsc --noEmit -p adapters/gmail && tsc --noEmit -p adapters/notion && tsc --noEmit -p adapters/gog",
     "test": "vitest run",
     "sync": "node --import tsx/esm packages/core/src/cli.ts sync",
     "sync:full": "node --import tsx/esm packages/core/src/cli.ts sync --full"

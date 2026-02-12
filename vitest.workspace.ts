@@ -6,4 +6,5 @@ export default defineWorkspace([
   "adapters/slack",
   "adapters/gmail",
   "adapters/notion",
+  "adapters/gog",
 ]);

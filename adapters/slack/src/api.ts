@@ -129,33 +129,45 @@ export class SlackApi {
     includeTypes = "public_channel,private_channel,im,mpim",
   ): Promise<SlackChannel[]> {
     const channels: SlackChannel[] = [];
-    let cursor: string | undefined;
 
-    do {
-      throwIfAborted(signal);
+    // Split types and fetch each independently to handle missing scopes gracefully
+    const types = includeTypes.split(",").map((t) => t.trim());
+    for (const type of types) {
+      let cursor: string | undefined;
+      try {
+        do {
+          throwIfAborted(signal);
 
-      const resp = await this.call(
-        () =>
-          this.client.conversations.list({
-            types: includeTypes,
-            limit: 200,
-            cursor: cursor || undefined,
-            exclude_archived: false,
-          }),
-        2,
-        "conversations.list",
-      );
+          const resp = await this.call(
+            () =>
+              this.client.conversations.list({
+                types: type,
+                limit: 200,
+                cursor: cursor || undefined,
+                exclude_archived: false,
+              }),
+            2,
+            `conversations.list(${type})`,
+          );
 
-      if (!resp.ok) {
-        throw new Error(`conversations.list failed: ${resp.error ?? "unknown"}`);
+          if (!resp.ok) {
+            throw new Error(`conversations.list failed: ${resp.error ?? "unknown"}`);
+          }
+
+          for (const ch of resp.channels ?? []) {
+            channels.push(mapChannel(ch));
+          }
+
+          cursor = resp.response_metadata?.next_cursor || undefined;
+        } while (cursor);
+      } catch (err: unknown) {
+        if (isMissingScopeError(err)) {
+          this.logger.warn(`Skipping ${type} channels (missing scope)`);
+          continue;
+        }
+        throw err;
       }
-
-      for (const ch of resp.channels ?? []) {
-        channels.push(mapChannel(ch));
-      }
-
-      cursor = resp.response_metadata?.next_cursor || undefined;
-    } while (cursor);
+    }
 
     return channels;
   }
@@ -360,6 +372,17 @@ function mapFile(raw: any): SlackFile {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isMissingScopeError(err: unknown): boolean {
+  if (typeof err === "object" && err !== null) {
+    const obj = err as Record<string, unknown>;
+    const data = obj.data as Record<string, unknown> | undefined;
+    if (data?.error === "missing_scope") return true;
+    if (obj.code === "slack_webapi_platform_error" && data?.error === "missing_scope") return true;
+    if (typeof obj.message === "string" && obj.message.includes("missing_scope")) return true;
+  }
+  return false;
 }
 
 function isRateLimitError(err: unknown): boolean {
