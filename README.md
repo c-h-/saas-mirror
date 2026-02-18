@@ -298,3 +298,52 @@ The `SyncContext` provides:
 
 - Node.js >= 20
 - Yarn 4.x (Corepack)
+
+## Scheduling (Automated Sync + Index)
+
+saas-mirror is a batch tool — it syncs and exits. Scheduling is handled externally via macOS **launchd**, keeping the project simple.
+
+### How It Works
+
+The `scheduling/` directory contains:
+- **`sync-and-index.sh`** — Chains sync → index. Syncs all adapters, then incrementally re-indexes changed files into the [retrieval-skill](https://github.com/c-h-/retrieval-skill) vector store. Skips indexing if the embedding server isn't running.
+- **`com.kindo.saas-mirror.plist`** — launchd job definition. Runs `sync-and-index.sh` every 30 minutes.
+
+### Setup
+
+```bash
+# Symlink the plist and load it
+ln -sf ~/personal/saas-mirror/scheduling/com.kindo.saas-mirror.plist ~/Library/LaunchAgents/
+launchctl load ~/Library/LaunchAgents/com.kindo.saas-mirror.plist
+
+# Verify it's loaded
+launchctl list | grep saas-mirror
+```
+
+### Monitoring
+
+```bash
+# Check if running
+launchctl list | grep saas-mirror
+
+# View logs
+tail -f /tmp/saas-mirror.log
+
+# Manual run
+bash scheduling/sync-and-index.sh
+```
+
+### Teardown
+
+```bash
+launchctl unload ~/Library/LaunchAgents/com.kindo.saas-mirror.plist
+rm ~/Library/LaunchAgents/com.kindo.saas-mirror.plist
+```
+
+### Design Rationale
+
+Why launchd and not a built-in daemon?
+- **Separation of concerns**: saas-mirror syncs data. Period. Scheduling is the OS's job.
+- **Reliability**: launchd runs whether or not any application framework is up.
+- **Simplicity**: No daemon mode, no PID management, no watchdog logic in the project.
+- **Observability**: An [OpenClaw](https://openclaw.ai) nightly health check verifies data freshness and index health, providing the "smart layer" on top of the dumb pipe.

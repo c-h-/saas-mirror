@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  saas-mirror: periodic sync + index
+  
+  Runs every 30 minutes. Syncs all SaaS adapters (Slack, Notion, Linear, Gmail),
+  then incrementally re-indexes changed files into the retrieval-skill vector store.
+  
+  Install:
+    ln -sf ~/personal/saas-mirror/scheduling/com.kindo.saas-mirror.plist ~/Library/LaunchAgents/
+    launchctl load ~/Library/LaunchAgents/com.kindo.saas-mirror.plist
+  
+  Uninstall:
+    launchctl unload ~/Library/LaunchAgents/com.kindo.saas-mirror.plist
+    rm ~/Library/LaunchAgents/com.kindo.saas-mirror.plist
+  
+  Logs: /tmp/saas-mirror.log
+  Status: launchctl list | grep saas-mirror
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.kindo.saas-mirror</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>scheduling/sync-and-index.sh</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>/Users/ms/personal/saas-mirror</string>
+    <key>StartInterval</key>
+    <integer>1800</integer>
+    <key>StandardOutPath</key>
+    <string>/tmp/saas-mirror.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/saas-mirror.log</string>
+</dict>
+</plist>
