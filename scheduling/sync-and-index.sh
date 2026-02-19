@@ -15,10 +15,26 @@ set -euo pipefail
 MIRROR_DIR="$HOME/personal/saas-mirror"
 RETRIEVAL_DIR="$HOME/personal/retrieval-skill"
 DATA_DIR="$MIRROR_DIR/data"
+LOCK_FILE="/tmp/saas-mirror.lock"
 LOG_PREFIX="[$(date '+%Y-%m-%d %H:%M:%S')]"
 
 # Ensure PATH includes mise-managed node
 export PATH="$HOME/.local/share/mise/shims:$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+
+# --- Singleton Lock ---
+# Prevent overlapping runs. If previous run is still going, skip this cycle.
+if [ -f "$LOCK_FILE" ]; then
+    LOCK_PID=$(cat "$LOCK_FILE" 2>/dev/null)
+    if kill -0 "$LOCK_PID" 2>/dev/null; then
+        echo "$LOG_PREFIX Skipping — previous run still active (PID $LOCK_PID)"
+        exit 0
+    else
+        echo "$LOG_PREFIX Removing stale lock (PID $LOCK_PID no longer running)"
+        rm -f "$LOCK_FILE"
+    fi
+fi
+echo $$ > "$LOCK_FILE"
+trap 'rm -f "$LOCK_FILE"' EXIT
 
 echo "$LOG_PREFIX Starting saas-mirror sync + index"
 
