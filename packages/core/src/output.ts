@@ -20,7 +20,7 @@ export class FileOutputWriter implements OutputWriter {
 
   private atomicWrite(filePath: string, content: string | Buffer): void {
     this.ensureDir(filePath);
-    const tmp = filePath + ".tmp";
+    const tmp = `${filePath}.tmp`;
     fs.writeFileSync(tmp, content);
     fs.renameSync(tmp, filePath);
   }
@@ -49,7 +49,7 @@ export class FileOutputWriter implements OutputWriter {
     records: Record<string, unknown>[],
   ): Promise<void> {
     const filePath = this.resolve(relativePath);
-    const lines = records.map((r) => JSON.stringify(r)).join("\n") + "\n";
+    const lines = `${records.map((r) => JSON.stringify(r)).join("\n")}\n`;
     this.atomicWrite(filePath, lines);
   }
 
@@ -59,7 +59,7 @@ export class FileOutputWriter implements OutputWriter {
   ): Promise<void> {
     const filePath = this.resolve(relativePath);
     this.ensureDir(filePath);
-    const lines = records.map((r) => JSON.stringify(r)).join("\n") + "\n";
+    const lines = `${records.map((r) => JSON.stringify(r)).join("\n")}\n`;
     fs.appendFileSync(filePath, lines);
   }
 

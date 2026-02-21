@@ -7,52 +7,52 @@
 
 import type {
   Adapter,
-  SyncContext,
-  SyncResult,
-  SyncError,
   Logger,
   OutputWriter,
+  SyncContext,
+  SyncError,
+  SyncResult,
 } from "@saas-mirror/core";
 import { createOutputWriter, slugify } from "@saas-mirror/core";
 import { LinearGraphQLClient } from "./graphql.js";
-import { LinearWriter } from "./writer.js";
 import {
-  VIEWER_QUERY,
+  CYCLES_QUERY,
+  ISSUE_COMMENTS_QUERY,
+  LABELS_QUERY,
+  PROJECTS_QUERY,
+  TEAM_ISSUES_INCREMENTAL_QUERY,
+  TEAM_ISSUES_QUERY,
   TEAMS_QUERY,
   USERS_QUERY,
-  LABELS_QUERY,
+  VIEWER_QUERY,
   WORKFLOW_STATES_QUERY,
-  CYCLES_QUERY,
-  PROJECTS_QUERY,
-  TEAM_ISSUES_QUERY,
-  TEAM_ISSUES_INCREMENTAL_QUERY,
-  ISSUE_COMMENTS_QUERY,
 } from "./queries.js";
 import type {
-  LinearConfig,
-  TeamRecord,
-  UserRecord,
-  LabelRecord,
-  WorkflowStateRecord,
-  CycleRecord,
-  ProjectRecord,
-  IssueRecord,
-  CommentRecord,
   AttachmentRecord,
-  IssueRelation,
-  LookupMaps,
-  ViewerResponse,
-  TeamsResponse,
-  UsersResponse,
-  LabelsResponse,
-  TeamStatesResponse,
-  TeamCyclesResponse,
-  ProjectsResponse,
-  TeamIssuesResponse,
+  CommentRecord,
+  CycleRecord,
   IssueCommentsResponse,
   IssueNode,
+  IssueRecord,
+  IssueRelation,
+  LabelRecord,
+  LabelsResponse,
+  LinearConfig,
+  LookupMaps,
+  ProjectRecord,
+  ProjectsResponse,
+  TeamCyclesResponse,
+  TeamIssuesResponse,
+  TeamRecord,
+  TeamStatesResponse,
+  TeamsResponse,
+  UserRecord,
+  UsersResponse,
+  ViewerResponse,
+  WorkflowStateRecord,
 } from "./types.js";
 import { INVERSE_RELATION_TYPES } from "./types.js";
+import { LinearWriter } from "./writer.js";
 
 export class LinearAdapter implements Adapter {
   readonly name = "linear";
@@ -68,9 +68,14 @@ export class LinearAdapter implements Adapter {
 
     this.config = {
       apiKey,
-      teamKeys: config?.teamKeys ?? parseCommaSeparated(process.env.LINEAR_TEAM_KEYS),
-      includeArchived: config?.includeArchived ?? parseBoolEnv(process.env.LINEAR_INCLUDE_ARCHIVED, true),
-      downloadAttachments: config?.downloadAttachments ?? parseBoolEnv(process.env.LINEAR_DOWNLOAD_ATTACHMENTS, true),
+      teamKeys:
+        config?.teamKeys ?? parseCommaSeparated(process.env.LINEAR_TEAM_KEYS),
+      includeArchived:
+        config?.includeArchived ??
+        parseBoolEnv(process.env.LINEAR_INCLUDE_ARCHIVED, true),
+      downloadAttachments:
+        config?.downloadAttachments ??
+        parseBoolEnv(process.env.LINEAR_DOWNLOAD_ATTACHMENTS, true),
     };
   }
 
@@ -94,7 +99,9 @@ export class LinearAdapter implements Adapter {
       // 1. Validate auth
       ctx.logger.info("Validating Linear API key...");
       const viewer = await gql.request<ViewerResponse>(VIEWER_QUERY);
-      ctx.logger.info(`Authenticated as ${viewer.viewer.name} (${viewer.viewer.email})`);
+      ctx.logger.info(
+        `Authenticated as ${viewer.viewer.name} (${viewer.viewer.email})`,
+      );
 
       // 2. Fetch metadata (always full refresh for meta entities)
       ctx.logger.info("Fetching organization metadata...");
@@ -105,32 +112,51 @@ export class LinearAdapter implements Adapter {
 
       // 4. Fetch and write projects
       ctx.logger.info("Fetching projects...");
-      const projectResult = await this.syncProjects(gql, writer, lookups, ctx.logger);
+      const projectResult = await this.syncProjects(
+        gql,
+        writer,
+        lookups,
+        ctx.logger,
+      );
       itemsSynced += projectResult.synced;
       itemsFailed += projectResult.failed;
       errors.push(...projectResult.errors);
 
       // 5. Fetch and write issues per team
-      const isIncremental = ctx.mode === "incremental" && ctx.state.lastSyncAt != null;
+      const isIncremental =
+        ctx.mode === "incremental" && ctx.state.lastSyncAt != null;
       const since = isIncremental ? ctx.state.lastSyncAt! : undefined;
 
       if (isIncremental) {
-        ctx.logger.info(`Incremental sync: fetching issues updated since ${since}`);
+        ctx.logger.info(
+          `Incremental sync: fetching issues updated since ${since}`,
+        );
       } else {
         ctx.logger.info("Full sync: fetching all issues");
       }
 
       for (const team of teams) {
-        ctx.logger.info(`Syncing issues for team ${team.key} (${team.name})...`);
+        ctx.logger.info(
+          `Syncing issues for team ${team.key} (${team.name})...`,
+        );
 
         try {
           const teamResult = await this.syncTeamIssues(
-            gql, writer, outputWriter, team, lookups, since, ctx.logger, ctx.signal,
+            gql,
+            writer,
+            outputWriter,
+            team,
+            lookups,
+            since,
+            ctx.logger,
+            ctx.signal,
           );
           itemsSynced += teamResult.synced;
           itemsFailed += teamResult.failed;
           errors.push(...teamResult.errors);
-          ctx.logger.info(`Team ${team.key}: ${teamResult.synced} issues synced, ${teamResult.failed} failed`);
+          ctx.logger.info(
+            `Team ${team.key}: ${teamResult.synced} issues synced, ${teamResult.failed} failed`,
+          );
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
           ctx.logger.error(`Failed to sync team ${team.key}: ${message}`);
@@ -151,7 +177,6 @@ export class LinearAdapter implements Adapter {
       if (ctx.mode === "full") {
         ctx.state.metadata.lastFullSyncAt = new Date().toISOString();
       }
-
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       ctx.logger.error(`Linear sync failed: ${message}`);
@@ -163,7 +188,9 @@ export class LinearAdapter implements Adapter {
     }
 
     const durationMs = Date.now() - startTime;
-    ctx.logger.info(`Linear sync completed in ${(durationMs / 1000).toFixed(1)}s: ${itemsSynced} synced, ${itemsFailed} failed`);
+    ctx.logger.info(
+      `Linear sync completed in ${(durationMs / 1000).toFixed(1)}s: ${itemsSynced} synced, ${itemsFailed} failed`,
+    );
 
     return {
       adapter: this.name,
@@ -184,11 +211,10 @@ export class LinearAdapter implements Adapter {
   ): Promise<LookupMaps> {
     // Fetch teams
     logger.info("Fetching teams...");
-    const teamNodes = await gql.paginate<TeamsResponse, TeamsResponse["teams"]["nodes"][0]>(
-      TEAMS_QUERY,
-      {},
-      (r) => r.teams,
-    );
+    const teamNodes = await gql.paginate<
+      TeamsResponse,
+      TeamsResponse["teams"]["nodes"][0]
+    >(TEAMS_QUERY, {}, (r) => r.teams);
     const teams: TeamRecord[] = teamNodes.map((n) => ({
       id: n.id,
       key: n.key,
@@ -199,11 +225,10 @@ export class LinearAdapter implements Adapter {
 
     // Fetch users
     logger.info("Fetching users...");
-    const userNodes = await gql.paginate<UsersResponse, UsersResponse["users"]["nodes"][0]>(
-      USERS_QUERY,
-      {},
-      (r) => r.users,
-    );
+    const userNodes = await gql.paginate<
+      UsersResponse,
+      UsersResponse["users"]["nodes"][0]
+    >(USERS_QUERY, {}, (r) => r.users);
     const users: UserRecord[] = userNodes.map((n) => ({
       id: n.id,
       name: n.name,
@@ -217,11 +242,10 @@ export class LinearAdapter implements Adapter {
 
     // Fetch labels
     logger.info("Fetching labels...");
-    const labelNodes = await gql.paginate<LabelsResponse, LabelsResponse["issueLabels"]["nodes"][0]>(
-      LABELS_QUERY,
-      {},
-      (r) => r.issueLabels,
-    );
+    const labelNodes = await gql.paginate<
+      LabelsResponse,
+      LabelsResponse["issueLabels"]["nodes"][0]
+    >(LABELS_QUERY, {}, (r) => r.issueLabels);
     const labels: LabelRecord[] = labelNodes.map((n) => ({
       id: n.id,
       name: n.name,
@@ -235,11 +259,10 @@ export class LinearAdapter implements Adapter {
     logger.info("Fetching workflow states...");
     const allStates: WorkflowStateRecord[] = [];
     for (const team of teams) {
-      const stateNodes = await gql.paginate<TeamStatesResponse, TeamStatesResponse["team"]["states"]["nodes"][0]>(
-        WORKFLOW_STATES_QUERY,
-        { teamId: team.id },
-        (r) => r.team.states,
-      );
+      const stateNodes = await gql.paginate<
+        TeamStatesResponse,
+        TeamStatesResponse["team"]["states"]["nodes"][0]
+      >(WORKFLOW_STATES_QUERY, { teamId: team.id }, (r) => r.team.states);
       for (const n of stateNodes) {
         allStates.push({
           id: n.id,
@@ -258,11 +281,10 @@ export class LinearAdapter implements Adapter {
     logger.info("Fetching cycles...");
     const allCycles: CycleRecord[] = [];
     for (const team of teams) {
-      const cycleNodes = await gql.paginate<TeamCyclesResponse, TeamCyclesResponse["team"]["cycles"]["nodes"][0]>(
-        CYCLES_QUERY,
-        { teamId: team.id },
-        (r) => r.team.cycles,
-      );
+      const cycleNodes = await gql.paginate<
+        TeamCyclesResponse,
+        TeamCyclesResponse["team"]["cycles"]["nodes"][0]
+      >(CYCLES_QUERY, { teamId: team.id }, (r) => r.team.cycles);
       for (const n of cycleNodes) {
         allCycles.push({
           id: n.id,
@@ -299,15 +321,17 @@ export class LinearAdapter implements Adapter {
     }
 
     const filtered = allTeams.filter((t) =>
-      this.config.teamKeys!.includes(t.key),
+      this.config.teamKeys?.includes(t.key),
     );
 
     if (filtered.length === 0) {
       logger.warn(
-        `No teams match configured keys: ${this.config.teamKeys!.join(", ")}. Available: ${allTeams.map((t) => t.key).join(", ")}`,
+        `No teams match configured keys: ${this.config.teamKeys?.join(", ")}. Available: ${allTeams.map((t) => t.key).join(", ")}`,
       );
     } else {
-      logger.info(`Syncing ${filtered.length} teams: ${filtered.map((t) => t.key).join(", ")}`);
+      logger.info(
+        `Syncing ${filtered.length} teams: ${filtered.map((t) => t.key).join(", ")}`,
+      );
     }
 
     return filtered;
@@ -324,11 +348,10 @@ export class LinearAdapter implements Adapter {
     const result: EntitySyncResult = { synced: 0, failed: 0, errors: [] };
 
     try {
-      const projectNodes = await gql.paginate<ProjectsResponse, ProjectsResponse["projects"]["nodes"][0]>(
-        PROJECTS_QUERY,
-        {},
-        (r) => r.projects,
-      );
+      const projectNodes = await gql.paginate<
+        ProjectsResponse,
+        ProjectsResponse["projects"]["nodes"][0]
+      >(PROJECTS_QUERY, {}, (r) => r.projects);
 
       for (const node of projectNodes) {
         try {
@@ -394,7 +417,10 @@ export class LinearAdapter implements Adapter {
       variables.since = since;
     }
 
-    const totalProcessed = await gql.paginateWithCallback<TeamIssuesResponse, IssueNode>(
+    const totalProcessed = await gql.paginateWithCallback<
+      TeamIssuesResponse,
+      IssueNode
+    >(
       query,
       variables,
       (r) => r.team.issues,
@@ -403,20 +429,30 @@ export class LinearAdapter implements Adapter {
           if (signal.aborted) break;
 
           try {
-            const issue = await this.processIssueNode(gql, node, team.id, logger);
+            const issue = await this.processIssueNode(
+              gql,
+              node,
+              team.id,
+              logger,
+            );
             await writer.writeIssue(issue, team.key, lookups);
 
             // Download attachments if enabled
             if (this.config.downloadAttachments) {
               await this.downloadIssueAttachments(
-                gql, outputWriter, issue, logger,
+                gql,
+                outputWriter,
+                issue,
+                logger,
               );
             }
 
             result.synced++;
           } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
-            logger.error(`Failed to process issue ${node.identifier}: ${message}`);
+            logger.error(
+              `Failed to process issue ${node.identifier}: ${message}`,
+            );
             result.errors.push({
               entity: `issue:${node.identifier}`,
               error: message,
@@ -452,10 +488,15 @@ export class LinearAdapter implements Adapter {
     }));
 
     // Fetch remaining comments if paginated
-    if (node.comments.pageInfo.hasNextPage && node.comments.pageInfo.endCursor) {
+    if (
+      node.comments.pageInfo.hasNextPage &&
+      node.comments.pageInfo.endCursor
+    ) {
       logger.info(`Fetching additional comments for ${node.identifier}...`);
       const extraComments = await this.fetchRemainingComments(
-        gql, node.id, node.comments.pageInfo.endCursor,
+        gql,
+        node.id,
+        node.comments.pageInfo.endCursor,
       );
       comments = comments.concat(extraComments);
     }
@@ -528,12 +569,14 @@ export class LinearAdapter implements Adapter {
     let cursor: string | undefined = startCursor;
 
     do {
-      const result: IssueCommentsResponse = await gql.request<IssueCommentsResponse>(
-        ISSUE_COMMENTS_QUERY,
-        { issueId, after: cursor },
-      );
+      const result: IssueCommentsResponse =
+        await gql.request<IssueCommentsResponse>(ISSUE_COMMENTS_QUERY, {
+          issueId,
+          after: cursor,
+        });
 
-      const page: IssueCommentsResponse["issue"]["comments"] = result.issue.comments;
+      const page: IssueCommentsResponse["issue"]["comments"] =
+        result.issue.comments;
       for (const c of page.nodes) {
         comments.push({
           id: c.id,
@@ -544,9 +587,10 @@ export class LinearAdapter implements Adapter {
         });
       }
 
-      cursor = page.pageInfo.hasNextPage && page.pageInfo.endCursor
-        ? page.pageInfo.endCursor
-        : undefined;
+      cursor =
+        page.pageInfo.hasNextPage && page.pageInfo.endCursor
+          ? page.pageInfo.endCursor
+          : undefined;
     } while (cursor);
 
     return comments;
@@ -567,18 +611,24 @@ export class LinearAdapter implements Adapter {
       }
 
       try {
-        const filename = extractFilenameFromUrl(attachment.url) ?? sanitizeAttachmentTitle(attachment.title);
+        const filename =
+          extractFilenameFromUrl(attachment.url) ??
+          sanitizeAttachmentTitle(attachment.title);
         const data = await gql.downloadBinary(attachment.url);
 
         if (data) {
           const safeName = sanitizeAttachmentFilename(filename);
           const relativePath = `attachments/${issue.identifier}/${safeName}`;
           await outputWriter.writeBinary(relativePath, data);
-          logger.info(`Downloaded attachment ${safeName} for ${issue.identifier}`);
+          logger.info(
+            `Downloaded attachment ${safeName} for ${issue.identifier}`,
+          );
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        logger.warn(`Failed to download attachment "${attachment.title}" for ${issue.identifier}: ${message}`);
+        logger.warn(
+          `Failed to download attachment "${attachment.title}" for ${issue.identifier}: ${message}`,
+        );
         // Non-fatal: continue with other attachments
       }
     }
@@ -597,11 +647,17 @@ interface EntitySyncResult {
 
 function parseCommaSeparated(value: string | undefined): string[] | undefined {
   if (!value) return undefined;
-  const parts = value.split(",").map((s) => s.trim()).filter(Boolean);
+  const parts = value
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
   return parts.length > 0 ? parts : undefined;
 }
 
-function parseBoolEnv(value: string | undefined, defaultValue: boolean): boolean {
+function parseBoolEnv(
+  value: string | undefined,
+  defaultValue: boolean,
+): boolean {
   if (value === undefined) return defaultValue;
   return value.toLowerCase() !== "false" && value !== "0";
 }
@@ -637,7 +693,7 @@ function extractFilenameFromUrl(url: string): string | null {
     const pathname = new URL(url).pathname;
     const segments = pathname.split("/").filter(Boolean);
     const last = segments[segments.length - 1];
-    if (last && last.includes(".")) {
+    if (last?.includes(".")) {
       return decodeURIComponent(last);
     }
   } catch {
@@ -647,9 +703,16 @@ function extractFilenameFromUrl(url: string): string | null {
 }
 
 function sanitizeAttachmentTitle(title: string): string {
-  return title.replace(/[/\\:*?"<>|]/g, "_").replace(/\s+/g, "_") || "attachment";
+  return (
+    title.replace(/[/\\:*?"<>|]/g, "_").replace(/\s+/g, "_") || "attachment"
+  );
 }
 
 function sanitizeAttachmentFilename(name: string): string {
-  return name.replace(/[/\\:*?"<>|]/g, "_").replace(/\s+/g, "_").slice(0, 200) || "attachment";
+  return (
+    name
+      .replace(/[/\\:*?"<>|]/g, "_")
+      .replace(/\s+/g, "_")
+      .slice(0, 200) || "attachment"
+  );
 }

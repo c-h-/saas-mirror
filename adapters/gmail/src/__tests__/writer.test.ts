@@ -1,11 +1,11 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import * as fs from "node:fs";
-import * as path from "node:path";
 import * as os from "node:os";
-import { createOutputWriter } from "@saas-mirror/core";
+import * as path from "node:path";
 import type { OutputWriter } from "@saas-mirror/core";
-import { writeMessage, writeLabels, resolveLabels } from "../writer.js";
-import type { GmailMessage, GmailLabel } from "../types.js";
+import { createOutputWriter } from "@saas-mirror/core";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import type { GmailLabel, GmailMessage } from "../types.js";
+import { resolveLabels, writeLabels, writeMessage } from "../writer.js";
 
 // ─── Helpers ───
 
@@ -29,9 +29,7 @@ function makeMessage(overrides: Partial<GmailMessage> = {}): GmailMessage {
   };
 }
 
-function makeLabelMap(
-  labels: GmailLabel[],
-): Map<string, GmailLabel> {
+function makeLabelMap(labels: GmailLabel[]): Map<string, GmailLabel> {
   const map = new Map<string, GmailLabel>();
   for (const label of labels) {
     map.set(label.id, label);
@@ -85,10 +83,7 @@ describe("resolveLabels", () => {
   });
 
   it("preserves the order of input label IDs", () => {
-    const result = resolveLabels(
-      ["Label_2", "INBOX", "Label_1"],
-      labelMap,
-    );
+    const result = resolveLabels(["Label_2", "INBOX", "Label_1"], labelMap);
     expect(result).toEqual(["Personal", "INBOX", "Work"]);
   });
 });
@@ -249,9 +244,7 @@ describe("writeMessage", () => {
       ),
     );
     expect(meta.inReplyTo).toBe("<parent@example.com>");
-    expect(meta.references).toBe(
-      "<parent@example.com> <root@example.com>",
-    );
+    expect(meta.references).toBe("<parent@example.com> <root@example.com>");
   });
 
   it("omits inReplyTo and references from meta when absent", async () => {
@@ -361,12 +354,12 @@ describe("writeMessage", () => {
     await writeMessage(writer, msg1, labelMap);
     await writeMessage(writer, msg2, labelMap);
 
-    expect(
-      fs.existsSync(path.join(tmpDir, "messages", "aaa111.md")),
-    ).toBe(true);
-    expect(
-      fs.existsSync(path.join(tmpDir, "messages", "bbb222.md")),
-    ).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, "messages", "aaa111.md"))).toBe(
+      true,
+    );
+    expect(fs.existsSync(path.join(tmpDir, "messages", "bbb222.md"))).toBe(
+      true,
+    );
     expect(
       fs.existsSync(path.join(tmpDir, "messages", "aaa111.meta.json")),
     ).toBe(true);
@@ -487,9 +480,9 @@ describe("writeLabels", () => {
 
     const data = JSON.parse(fs.readFileSync(filePath, "utf-8"));
 
-    expect(data["INBOX"]).toEqual({ name: "INBOX", type: "system" });
-    expect(data["SENT"]).toEqual({ name: "SENT", type: "system" });
-    expect(data["Label_1"]).toEqual({ name: "Work", type: "user" });
+    expect(data.INBOX).toEqual({ name: "INBOX", type: "system" });
+    expect(data.SENT).toEqual({ name: "SENT", type: "system" });
+    expect(data.Label_1).toEqual({ name: "Work", type: "user" });
   });
 
   it("writes an empty object for no labels", async () => {
@@ -512,8 +505,8 @@ describe("writeLabels", () => {
     const data = JSON.parse(
       fs.readFileSync(path.join(tmpDir, "_labels.json"), "utf-8"),
     );
-    expect(data["Label_special"].name).toBe("Projects/Alpha & Beta");
-    expect(data["Label_emoji"].name).toBe("Stars/Important");
+    expect(data.Label_special.name).toBe("Projects/Alpha & Beta");
+    expect(data.Label_emoji.name).toBe("Stars/Important");
   });
 
   it("overwrites existing _labels.json on re-write", async () => {
@@ -532,7 +525,7 @@ describe("writeLabels", () => {
       fs.readFileSync(path.join(tmpDir, "_labels.json"), "utf-8"),
     );
     expect(Object.keys(data)).toHaveLength(2);
-    expect(data["Label_new"]).toEqual({ name: "New Label", type: "user" });
+    expect(data.Label_new).toEqual({ name: "New Label", type: "user" });
   });
 
   it("writes valid JSON (parseable by JSON.parse)", async () => {
@@ -544,10 +537,7 @@ describe("writeLabels", () => {
 
     await writeLabels(writer, labels);
 
-    const raw = fs.readFileSync(
-      path.join(tmpDir, "_labels.json"),
-      "utf-8",
-    );
+    const raw = fs.readFileSync(path.join(tmpDir, "_labels.json"), "utf-8");
     expect(() => JSON.parse(raw)).not.toThrow();
   });
 
@@ -562,7 +552,7 @@ describe("writeLabels", () => {
     const data = JSON.parse(
       fs.readFileSync(path.join(tmpDir, "_labels.json"), "utf-8"),
     );
-    expect(data["INBOX"].type).toBe("system");
-    expect(data["Label_user"].type).toBe("user");
+    expect(data.INBOX.type).toBe("system");
+    expect(data.Label_user.type).toBe("user");
   });
 });

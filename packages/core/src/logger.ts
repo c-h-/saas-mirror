@@ -8,17 +8,17 @@ export class ConsoleLogger implements Logger {
   }
 
   info(msg: string, data?: Record<string, unknown>): void {
-    const extra = data ? " " + JSON.stringify(data) : "";
+    const extra = data ? ` ${JSON.stringify(data)}` : "";
     console.log(`${this.prefix} ${msg}${extra}`);
   }
 
   warn(msg: string, data?: Record<string, unknown>): void {
-    const extra = data ? " " + JSON.stringify(data) : "";
+    const extra = data ? ` ${JSON.stringify(data)}` : "";
     console.warn(`${this.prefix} ⚠ ${msg}${extra}`);
   }
 
   error(msg: string, data?: Record<string, unknown>): void {
-    const extra = data ? " " + JSON.stringify(data) : "";
+    const extra = data ? ` ${JSON.stringify(data)}` : "";
     console.error(`${this.prefix} ✗ ${msg}${extra}`);
   }
 

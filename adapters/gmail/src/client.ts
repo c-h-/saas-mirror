@@ -9,10 +9,15 @@
  * the adapter never has to think about quota management.
  */
 
-import { google, type gmail_v1 } from "googleapis";
-import type { RateLimiter, Logger } from "@saas-mirror/core";
+import type { Logger, RateLimiter } from "@saas-mirror/core";
 import { withRetry } from "@saas-mirror/core";
-import type { GmailConfig, GmailLabel, HistoryChanges, LabelChange } from "./types.js";
+import { type gmail_v1, google } from "googleapis";
+import type {
+  GmailConfig,
+  GmailLabel,
+  HistoryChanges,
+  LabelChange,
+} from "./types.js";
 
 // ─── Quota costs (units per call) ───
 
@@ -28,11 +33,15 @@ const COST_GET_PROFILE = 5;
 function isRetryableGmailError(err: unknown): boolean {
   if (err == null || typeof err !== "object") return false;
 
-  const status = (err as { code?: number; status?: number }).code
-    ?? (err as { code?: number; status?: number }).status;
+  const status =
+    (err as { code?: number; status?: number }).code ??
+    (err as { code?: number; status?: number }).status;
 
   // 429 Too Many Requests, 5xx Server Errors
-  if (status === 429 || (status !== undefined && status >= 500 && status < 600)) {
+  if (
+    status === 429 ||
+    (status !== undefined && status >= 500 && status < 600)
+  ) {
     return true;
   }
 
@@ -58,13 +67,11 @@ function isRetryableGmailError(err: unknown): boolean {
 export class GmailClient {
   private readonly gmail: gmail_v1.Gmail;
   private readonly rateLimiter: RateLimiter;
-  private readonly logger: Logger;
   private readonly config: GmailConfig;
 
-  constructor(config: GmailConfig, rateLimiter: RateLimiter, logger: Logger) {
+  constructor(config: GmailConfig, rateLimiter: RateLimiter, _logger: Logger) {
     this.config = config;
     this.rateLimiter = rateLimiter;
-    this.logger = logger;
 
     const auth = new google.auth.OAuth2(config.clientId, config.clientSecret);
     auth.setCredentials({ refresh_token: config.refreshToken });
@@ -149,7 +156,10 @@ export class GmailClient {
   /**
    * Fetch the raw bytes of an attachment. Returns a Buffer.
    */
-  async getAttachment(messageId: string, attachmentId: string): Promise<Buffer> {
+  async getAttachment(
+    messageId: string,
+    attachmentId: string,
+  ): Promise<Buffer> {
     await this.rateLimiter.acquire(COST_GET_ATTACHMENT);
     const res = await withRetry(
       () =>
@@ -163,7 +173,9 @@ export class GmailClient {
 
     const data = res.data.data;
     if (!data) {
-      throw new Error(`Empty attachment data for message=${messageId} attachment=${attachmentId}`);
+      throw new Error(
+        `Empty attachment data for message=${messageId} attachment=${attachmentId}`,
+      );
     }
     return Buffer.from(data, "base64url");
   }
@@ -273,7 +285,11 @@ export class GmailClient {
 
   // ── Profile ──
 
-  async getProfile(): Promise<{ emailAddress: string; historyId: string; messagesTotal: number }> {
+  async getProfile(): Promise<{
+    emailAddress: string;
+    historyId: string;
+    messagesTotal: number;
+  }> {
     await this.rateLimiter.acquire(COST_GET_PROFILE);
     const res = await withRetry(
       () => this.gmail.users.getProfile({ userId: "me" }),

@@ -5,15 +5,15 @@
  * raw API responses to our internal Slack types.
  */
 
+import type { Logger, RateLimiter } from "@saas-mirror/core";
 import { WebClient } from "@slack/web-api";
-import type { RateLimiter, Logger } from "@saas-mirror/core";
 import type {
   SlackAuthInfo,
   SlackChannel,
-  SlackUser,
+  SlackFile,
   SlackMessage,
   SlackReaction,
-  SlackFile,
+  SlackUser,
 } from "./types.js";
 
 /** Tier-based minimum delays (ms) between calls. */
@@ -58,7 +58,9 @@ export class SlackApi {
     } catch (err: unknown) {
       if (isRateLimitError(err)) {
         const retryAfter = extractRetryAfter(err);
-        this.logger.warn(`Rate limited on ${label}, retrying in ${retryAfter}s`);
+        this.logger.warn(
+          `Rate limited on ${label}, retrying in ${retryAfter}s`,
+        );
         const backoffMs = (retryAfter + 1) * 1000;
         this.rateLimiter.backoff(backoffMs);
         await sleep(backoffMs);
@@ -71,11 +73,7 @@ export class SlackApi {
   // ─── Auth ───
 
   async authenticate(): Promise<SlackAuthInfo> {
-    const resp = await this.call(
-      () => this.client.auth.test(),
-      4,
-      "auth.test",
-    );
+    const resp = await this.call(() => this.client.auth.test(), 4, "auth.test");
 
     if (!resp.ok) {
       throw new Error(`auth.test failed: ${resp.error ?? "unknown error"}`);
@@ -151,7 +149,9 @@ export class SlackApi {
           );
 
           if (!resp.ok) {
-            throw new Error(`conversations.list failed: ${resp.error ?? "unknown"}`);
+            throw new Error(
+              `conversations.list failed: ${resp.error ?? "unknown"}`,
+            );
           }
 
           for (const ch of resp.channels ?? []) {
@@ -207,10 +207,9 @@ export class SlackApi {
         messages.push(mapMessage(msg, channelId));
       }
 
-      cursor =
-        resp.has_more
-          ? resp.response_metadata?.next_cursor || undefined
-          : undefined;
+      cursor = resp.has_more
+        ? resp.response_metadata?.next_cursor || undefined
+        : undefined;
     } while (cursor);
 
     // API returns newest first; reverse to get chronological order
@@ -255,10 +254,9 @@ export class SlackApi {
         replies.push(mapMessage(msg, channelId));
       }
 
-      cursor =
-        resp.has_more
-          ? resp.response_metadata?.next_cursor || undefined
-          : undefined;
+      cursor = resp.has_more
+        ? resp.response_metadata?.next_cursor || undefined
+        : undefined;
     } while (cursor);
 
     return replies;
@@ -266,10 +264,7 @@ export class SlackApi {
 
   // ─── File Download ───
 
-  async downloadFile(
-    url: string,
-    signal: AbortSignal,
-  ): Promise<Buffer> {
+  async downloadFile(url: string, signal: AbortSignal): Promise<Buffer> {
     throwIfAborted(signal);
 
     const resp = await this.call(
@@ -279,7 +274,9 @@ export class SlackApi {
           signal,
         });
         if (!res.ok) {
-          throw new Error(`File download failed: ${res.status} ${res.statusText}`);
+          throw new Error(
+            `File download failed: ${res.status} ${res.statusText}`,
+          );
         }
         return Buffer.from(await res.arrayBuffer());
       },
@@ -379,8 +376,16 @@ function isMissingScopeError(err: unknown): boolean {
     const obj = err as Record<string, unknown>;
     const data = obj.data as Record<string, unknown> | undefined;
     if (data?.error === "missing_scope") return true;
-    if (obj.code === "slack_webapi_platform_error" && data?.error === "missing_scope") return true;
-    if (typeof obj.message === "string" && obj.message.includes("missing_scope")) return true;
+    if (
+      obj.code === "slack_webapi_platform_error" &&
+      data?.error === "missing_scope"
+    )
+      return true;
+    if (
+      typeof obj.message === "string" &&
+      obj.message.includes("missing_scope")
+    )
+      return true;
   }
   return false;
 }

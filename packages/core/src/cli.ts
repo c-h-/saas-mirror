@@ -16,10 +16,16 @@ async function loadAdapters(): Promise<AdapterRegistration[]> {
     if (process.env.SLACK_BOT_TOKEN) {
       registrations.push({
         adapter: new SlackAdapter(),
-        rateLimiterConfig: { minDelayMs: 600, maxRequests: 50, windowMs: 60_000 },
+        rateLimiterConfig: {
+          minDelayMs: 600,
+          maxRequests: 50,
+          windowMs: 60_000,
+        },
       });
     }
-  } catch { /* adapter not installed */ }
+  } catch {
+    /* adapter not installed */
+  }
 
   try {
     const { NotionAdapter } = await import("@saas-mirror/notion");
@@ -29,17 +35,25 @@ async function loadAdapters(): Promise<AdapterRegistration[]> {
         rateLimiterConfig: { maxRequests: 3, windowMs: 1_000, minDelayMs: 200 },
       });
     }
-  } catch { /* adapter not installed */ }
+  } catch {
+    /* adapter not installed */
+  }
 
   try {
     const { LinearAdapter } = await import("@saas-mirror/linear");
     if (process.env.LINEAR_API_KEY) {
       registrations.push({
         adapter: new LinearAdapter(),
-        rateLimiterConfig: { minDelayMs: 50, maxRequests: 4500, windowMs: 3_600_000 },
+        rateLimiterConfig: {
+          minDelayMs: 50,
+          maxRequests: 4500,
+          windowMs: 3_600_000,
+        },
       });
     }
-  } catch { /* adapter not installed */ }
+  } catch {
+    /* adapter not installed */
+  }
 
   try {
     const { GmailAdapter } = await import("@saas-mirror/gmail");
@@ -49,7 +63,9 @@ async function loadAdapters(): Promise<AdapterRegistration[]> {
         rateLimiterConfig: { maxUnitsPerWindow: 14_000, unitsWindowMs: 60_000 },
       });
     }
-  } catch { /* adapter not installed */ }
+  } catch {
+    /* adapter not installed */
+  }
 
   try {
     const { GogAdapter } = await import("@saas-mirror/gog");
@@ -59,7 +75,9 @@ async function loadAdapters(): Promise<AdapterRegistration[]> {
         rateLimiterConfig: { maxRequests: 20, windowMs: 1_000 },
       });
     }
-  } catch { /* adapter not installed */ }
+  } catch {
+    /* adapter not installed */
+  }
 
   return registrations;
 }
@@ -138,9 +156,7 @@ program
       try {
         const raw = fs.readFileSync(stateFile, "utf-8");
         const state = JSON.parse(raw);
-        console.log(
-          `${name}: last synced ${state.lastSyncAt ?? "never"}`,
-        );
+        console.log(`${name}: last synced ${state.lastSyncAt ?? "never"}`);
       } catch {
         console.log(`${name}: no sync state found`);
       }
@@ -193,12 +209,16 @@ program
     const shutdown = () => {
       if (shuttingDown) return;
       shuttingDown = true;
-      console.log("\n[daemon] Graceful shutdown requested — finishing current sync...");
+      console.log(
+        "\n[daemon] Graceful shutdown requested — finishing current sync...",
+      );
     };
     process.on("SIGINT", shutdown);
     process.on("SIGTERM", shutdown);
 
-    console.log(`[daemon] Starting with ${adapters.length} adapters: ${adapters.map((a) => a.adapter.name).join(", ")}`);
+    console.log(
+      `[daemon] Starting with ${adapters.length} adapters: ${adapters.map((a) => a.adapter.name).join(", ")}`,
+    );
     console.log(`[daemon] Sync interval: ${opts.interval} minutes`);
 
     // Phase 1: Check each adapter's hydration state and run full sync if needed
@@ -213,7 +233,9 @@ program
         const raw = fs.readFileSync(stateFile, "utf-8");
         const state = JSON.parse(raw);
         if (state.lastSyncAt) {
-          console.log(`[daemon] ${name}: hydrated (last sync ${state.lastSyncAt})`);
+          console.log(
+            `[daemon] ${name}: hydrated (last sync ${state.lastSyncAt})`,
+          );
           needsHydration = false;
         }
       } catch {
@@ -233,7 +255,9 @@ program
             }
           }
         } catch (err) {
-          console.error(`[daemon] ${name}: full sync failed — ${err instanceof Error ? err.message : String(err)}`);
+          console.error(
+            `[daemon] ${name}: full sync failed — ${err instanceof Error ? err.message : String(err)}`,
+          );
         }
       }
     }
@@ -249,7 +273,9 @@ program
     while (!shuttingDown) {
       // Wait for next cycle
       const nextSync = new Date(Date.now() + intervalMs);
-      console.log(`[daemon] Next sync at ${nextSync.toLocaleTimeString()} (in ${opts.interval} min)`);
+      console.log(
+        `[daemon] Next sync at ${nextSync.toLocaleTimeString()} (in ${opts.interval} min)`,
+      );
 
       // Sleep in 1-second increments so we can respond to shutdown quickly
       const sleepUntil = Date.now() + intervalMs;

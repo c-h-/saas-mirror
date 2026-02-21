@@ -1,22 +1,22 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import * as fs from "node:fs";
-import * as path from "node:path";
 import * as os from "node:os";
-import { createOutputWriter } from "@saas-mirror/core";
+import * as path from "node:path";
 import type { OutputWriter } from "@saas-mirror/core";
-import {
-  writeChannelOutput,
-  writeUsersIndex,
-  writeChannelsIndex,
-} from "../writer.js";
+import { createOutputWriter } from "@saas-mirror/core";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type {
+  ChannelExportData,
+  ChannelMap,
   SlackChannel,
   SlackMessage,
   SlackUser,
   UserMap,
-  ChannelMap,
-  ChannelExportData,
 } from "../types.js";
+import {
+  writeChannelOutput,
+  writeChannelsIndex,
+  writeUsersIndex,
+} from "../writer.js";
 
 // ─── Helpers ───
 
@@ -142,7 +142,10 @@ describe("writeChannelOutput", () => {
 
     // _meta.json
     expect(fileExists(tmpDir, "channels/general/_meta.json")).toBe(true);
-    const meta = readJson(tmpDir, "channels/general/_meta.json") as Record<string, unknown>;
+    const meta = readJson(tmpDir, "channels/general/_meta.json") as Record<
+      string,
+      unknown
+    >;
     expect(meta.channelId).toBe("C001");
     expect(meta.channelName).toBe("general");
     expect(meta.type).toBe("public");
@@ -196,7 +199,10 @@ describe("writeChannelOutput", () => {
     const md = readFile(tmpDir, "channels/empty-channel/messages.md");
     expect(md).toContain("_No messages._");
 
-    const meta = readJson(tmpDir, "channels/empty-channel/_meta.json") as Record<string, unknown>;
+    const meta = readJson(
+      tmpDir,
+      "channels/empty-channel/_meta.json",
+    ) as Record<string, unknown>;
     expect(meta.messageCount).toBe(0);
     expect(meta.oldestMessage).toBeNull();
     expect(meta.newestMessage).toBeNull();
@@ -210,7 +216,11 @@ describe("writeChannelOutput", () => {
 
     const messages: SlackMessage[] = [
       makeMessage({ ts: "1672531200.000000", text: "Normal msg" }),
-      makeMessage({ ts: "1672531260.000000", text: "", subtype: "message_deleted" }),
+      makeMessage({
+        ts: "1672531260.000000",
+        text: "",
+        subtype: "message_deleted",
+      }),
       makeMessage({ ts: "1672531320.000000", text: "Another msg" }),
     ];
 
@@ -232,7 +242,10 @@ describe("writeChannelOutput", () => {
     expect(JSON.parse(jsonlLines[1]!).text).toBe("Another msg");
 
     // Meta should also exclude deleted messages
-    const meta = readJson(tmpDir, "channels/general/_meta.json") as Record<string, unknown>;
+    const meta = readJson(tmpDir, "channels/general/_meta.json") as Record<
+      string,
+      unknown
+    >;
     expect(meta.messageCount).toBe(2);
   });
 
@@ -313,7 +326,12 @@ describe("writeChannelOutput", () => {
     const channelMap = makeChannelMap(channel);
 
     const messages: SlackMessage[] = [
-      makeMessage({ ts: "1672531200.000000", userId: "U001", text: "", subtype: "channel_join" }),
+      makeMessage({
+        ts: "1672531200.000000",
+        userId: "U001",
+        text: "",
+        subtype: "channel_join",
+      }),
     ];
 
     const data: ChannelExportData = {
@@ -406,7 +424,7 @@ describe("writeChannelOutput", () => {
     expect(fileExists(tmpDir, threadPath)).toBe(true);
 
     const threadMd = readFile(tmpDir, threadPath);
-    expect(threadMd).toContain("thread_ts: \"1672531200.000000\"");
+    expect(threadMd).toContain('thread_ts: "1672531200.000000"');
     expect(threadMd).toContain("# Thread in #general");
     expect(threadMd).toContain("**Alice** started this thread");
     expect(threadMd).toContain("Start thread");
@@ -436,7 +454,10 @@ describe("writeChannelOutput", () => {
 
     await writeChannelOutput(writer, data, channelMap);
 
-    const meta = readJson(tmpDir, "channels/general/_meta.json") as Record<string, unknown>;
+    const meta = readJson(tmpDir, "channels/general/_meta.json") as Record<
+      string,
+      unknown
+    >;
     expect(meta.messageCount).toBe(3);
     expect(meta.oldestMessage).toBe("2023-01-01T00:00:00.000Z");
     expect(meta.newestMessage).toBe("2023-01-03T00:00:00.000Z");
@@ -584,28 +605,46 @@ describe("writeUsersIndex", () => {
   });
 
   it("writes _meta/users.json with all users", async () => {
-    const alice = makeUser({ id: "U001", name: "alice", displayName: "Alice", email: "alice@co.com" });
-    const bob = makeUser({ id: "U002", name: "bob", displayName: "Bob", isBot: true });
+    const alice = makeUser({
+      id: "U001",
+      name: "alice",
+      displayName: "Alice",
+      email: "alice@co.com",
+    });
+    const bob = makeUser({
+      id: "U002",
+      name: "bob",
+      displayName: "Bob",
+      isBot: true,
+    });
     const userMap = makeUserMap(alice, bob);
 
     await writeUsersIndex(writer, userMap);
 
     expect(fileExists(tmpDir, "_meta/users.json")).toBe(true);
-    const data = readJson(tmpDir, "_meta/users.json") as { users: Record<string, unknown>[] };
+    const data = readJson(tmpDir, "_meta/users.json") as {
+      users: Record<string, unknown>[];
+    };
     expect(data.users).toHaveLength(2);
 
     const ids = data.users.map((u) => u.id);
     expect(ids).toContain("U001");
     expect(ids).toContain("U002");
 
-    const aliceRecord = data.users.find((u) => u.id === "U001") as Record<string, unknown>;
+    const aliceRecord = data.users.find((u) => u.id === "U001") as Record<
+      string,
+      unknown
+    >;
     expect(aliceRecord.name).toBe("alice");
     expect(aliceRecord.displayName).toBe("Alice");
     expect(aliceRecord.email).toBe("alice@co.com");
     expect(aliceRecord.isBot).toBe(false);
     expect(aliceRecord.isDeleted).toBe(false);
 
-    const bobRecord = data.users.find((u) => u.id === "U002") as Record<string, unknown>;
+    const bobRecord = data.users.find((u) => u.id === "U002") as Record<
+      string,
+      unknown
+    >;
     expect(bobRecord.isBot).toBe(true);
   });
 
@@ -619,12 +658,17 @@ describe("writeUsersIndex", () => {
   });
 
   it("excludes avatar72 from written user data", async () => {
-    const user = makeUser({ id: "U001", avatar72: "https://example.com/avatar.png" });
+    const user = makeUser({
+      id: "U001",
+      avatar72: "https://example.com/avatar.png",
+    });
     const userMap = makeUserMap(user);
 
     await writeUsersIndex(writer, userMap);
 
-    const data = readJson(tmpDir, "_meta/users.json") as { users: Record<string, unknown>[] };
+    const data = readJson(tmpDir, "_meta/users.json") as {
+      users: Record<string, unknown>[];
+    };
     const record = data.users[0]!;
     expect(record).not.toHaveProperty("avatar72");
   });
@@ -636,9 +680,17 @@ describe("writeUsersIndex", () => {
 
     await writeUsersIndex(writer, userMap);
 
-    const data = readJson(tmpDir, "_meta/users.json") as { users: Record<string, unknown>[] };
-    const user1 = data.users.find((u) => u.id === "U001") as Record<string, unknown>;
-    const user2 = data.users.find((u) => u.id === "U002") as Record<string, unknown>;
+    const data = readJson(tmpDir, "_meta/users.json") as {
+      users: Record<string, unknown>[];
+    };
+    const user1 = data.users.find((u) => u.id === "U001") as Record<
+      string,
+      unknown
+    >;
+    const user2 = data.users.find((u) => u.id === "U002") as Record<
+      string,
+      unknown
+    >;
     expect(user1.email).toBe("test@example.com");
     expect(user2.email).toBeUndefined();
   });
@@ -661,8 +713,20 @@ describe("writeChannelsIndex", () => {
 
   it("writes _meta/channels.json with channel data", async () => {
     const channels: SlackChannel[] = [
-      makeChannel({ id: "C001", name: "general", type: "public", memberCount: 50, isArchived: false }),
-      makeChannel({ id: "C002", name: "random", type: "public", memberCount: 30, isArchived: false }),
+      makeChannel({
+        id: "C001",
+        name: "general",
+        type: "public",
+        memberCount: 50,
+        isArchived: false,
+      }),
+      makeChannel({
+        id: "C002",
+        name: "random",
+        type: "public",
+        memberCount: 30,
+        isArchived: false,
+      }),
     ];
 
     const slugMap = new Map<string, string>();
@@ -672,7 +736,9 @@ describe("writeChannelsIndex", () => {
     await writeChannelsIndex(writer, channels, slugMap);
 
     expect(fileExists(tmpDir, "_meta/channels.json")).toBe(true);
-    const data = readJson(tmpDir, "_meta/channels.json") as { channels: Record<string, unknown>[] };
+    const data = readJson(tmpDir, "_meta/channels.json") as {
+      channels: Record<string, unknown>[];
+    };
     expect(data.channels).toHaveLength(2);
 
     const ch1 = data.channels[0]!;
@@ -698,14 +764,18 @@ describe("writeChannelsIndex", () => {
 
     await writeChannelsIndex(writer, channels, slugMap);
 
-    const data = readJson(tmpDir, "_meta/channels.json") as { channels: Record<string, unknown>[] };
-    expect(data.channels[0]!.slug).toBe("no-slug-channel");
+    const data = readJson(tmpDir, "_meta/channels.json") as {
+      channels: Record<string, unknown>[];
+    };
+    expect(data.channels[0]?.slug).toBe("no-slug-channel");
   });
 
   it("writes an empty channels array when no channels are provided", async () => {
     await writeChannelsIndex(writer, [], new Map());
 
-    const data = readJson(tmpDir, "_meta/channels.json") as { channels: unknown[] };
+    const data = readJson(tmpDir, "_meta/channels.json") as {
+      channels: unknown[];
+    };
     expect(data.channels).toEqual([]);
   });
 
@@ -723,7 +793,9 @@ describe("writeChannelsIndex", () => {
 
     await writeChannelsIndex(writer, channels, slugMap);
 
-    const data = readJson(tmpDir, "_meta/channels.json") as { channels: Record<string, unknown>[] };
+    const data = readJson(tmpDir, "_meta/channels.json") as {
+      channels: Record<string, unknown>[];
+    };
     const ch = data.channels[0]!;
     expect(ch.topic).toBe("Engineering discussions");
     expect(ch.purpose).toBe("For the engineering team");
@@ -742,9 +814,11 @@ describe("writeChannelsIndex", () => {
 
     await writeChannelsIndex(writer, channels, slugMap);
 
-    const data = readJson(tmpDir, "_meta/channels.json") as { channels: Record<string, unknown>[] };
-    expect(data.channels[0]!.isArchived).toBe(false);
-    expect(data.channels[1]!.isArchived).toBe(true);
+    const data = readJson(tmpDir, "_meta/channels.json") as {
+      channels: Record<string, unknown>[];
+    };
+    expect(data.channels[0]?.isArchived).toBe(false);
+    expect(data.channels[1]?.isArchived).toBe(true);
   });
 
   it("handles channels with different types", async () => {
@@ -764,11 +838,13 @@ describe("writeChannelsIndex", () => {
 
     await writeChannelsIndex(writer, channels, slugMap);
 
-    const data = readJson(tmpDir, "_meta/channels.json") as { channels: Record<string, unknown>[] };
+    const data = readJson(tmpDir, "_meta/channels.json") as {
+      channels: Record<string, unknown>[];
+    };
     expect(data.channels).toHaveLength(4);
-    expect(data.channels[0]!.type).toBe("public");
-    expect(data.channels[1]!.type).toBe("private");
-    expect(data.channels[2]!.type).toBe("im");
-    expect(data.channels[3]!.type).toBe("mpim");
+    expect(data.channels[0]?.type).toBe("public");
+    expect(data.channels[1]?.type).toBe("private");
+    expect(data.channels[2]?.type).toBe("im");
+    expect(data.channels[3]?.type).toBe("mpim");
   });
 });

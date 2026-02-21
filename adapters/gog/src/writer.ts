@@ -6,7 +6,7 @@
  */
 
 import type { OutputWriter } from "@saas-mirror/core";
-import type { GogMessageFull, GogLabel } from "./types.js";
+import type { GogLabel, GogMessageFull } from "./types.js";
 
 export async function writeMessage(
   writer: OutputWriter,
@@ -77,17 +77,18 @@ export async function writeThreadView(
   writer: OutputWriter,
   threadId: string,
   messages: GogMessageFull[],
-  labelMap: Map<string, string>,
+  _labelMap: Map<string, string>,
 ): Promise<void> {
   if (messages.length === 0) return;
 
   // Sort by internalDate
   const sorted = [...messages].sort(
     (a, b) =>
-      parseInt(a.message.internalDate, 10) - parseInt(b.message.internalDate, 10),
+      parseInt(a.message.internalDate, 10) -
+      parseInt(b.message.internalDate, 10),
   );
 
-  const subject = sorted[0]!.headers.subject || "(no subject)";
+  const subject = sorted[0]?.headers.subject || "(no subject)";
 
   const fm: Record<string, unknown> = {
     threadId,

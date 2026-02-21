@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
 import { execFile } from "node:child_process";
-import { GogCli } from "../cli.js";
 import type { Logger } from "@saas-mirror/core";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { GogCli } from "../cli.js";
 
 // Mock child_process.execFile
 vi.mock("node:child_process", () => ({
@@ -43,7 +43,7 @@ describe("GogCli", () => {
 
       const labels = await cli.listLabels();
       expect(labels).toHaveLength(2);
-      expect(labels[0]!.id).toBe("INBOX");
+      expect(labels[0]?.id).toBe("INBOX");
 
       // Verify correct CLI args
       const callArgs = mockExecFile.mock.calls[0]!;
@@ -59,7 +59,14 @@ describe("GogCli", () => {
     it("parses message summaries and pagination token", async () => {
       const jsonOutput = JSON.stringify({
         messages: [
-          { id: "msg-1", threadId: "t-1", from: "alice@example.com", subject: "Test", date: "2024-01-01", labels: ["INBOX"] },
+          {
+            id: "msg-1",
+            threadId: "t-1",
+            from: "alice@example.com",
+            subject: "Test",
+            date: "2024-01-01",
+            labels: ["INBOX"],
+          },
         ],
         nextPageToken: "page2",
       });
@@ -93,8 +100,24 @@ describe("GogCli", () => {
     it("parses full message", async () => {
       const jsonOutput = JSON.stringify({
         body: "Hello",
-        headers: { from: "alice@example.com", to: "bob@example.com", cc: "", bcc: "", date: "2024-01-01", subject: "Hi" },
-        message: { id: "msg-1", threadId: "t-1", historyId: "123", internalDate: "1704067200000", labelIds: ["INBOX"], payload: { body: {}, headers: [], mimeType: "text/plain" }, sizeEstimate: 100, snippet: "Hello" },
+        headers: {
+          from: "alice@example.com",
+          to: "bob@example.com",
+          cc: "",
+          bcc: "",
+          date: "2024-01-01",
+          subject: "Hi",
+        },
+        message: {
+          id: "msg-1",
+          threadId: "t-1",
+          historyId: "123",
+          internalDate: "1704067200000",
+          labelIds: ["INBOX"],
+          payload: { body: {}, headers: [], mimeType: "text/plain" },
+          sizeEstimate: 100,
+          snippet: "Hello",
+        },
       });
 
       mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {

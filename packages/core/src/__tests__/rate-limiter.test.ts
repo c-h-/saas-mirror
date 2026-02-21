@@ -1,9 +1,12 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { TokenBucketRateLimiter } from "../rate-limiter.js";
 
 describe("TokenBucketRateLimiter", () => {
   it("acquires immediately when under limit", async () => {
-    const limiter = new TokenBucketRateLimiter({ maxRequests: 100, windowMs: 1000 });
+    const limiter = new TokenBucketRateLimiter({
+      maxRequests: 100,
+      windowMs: 1000,
+    });
     const start = Date.now();
     await limiter.acquire();
     const elapsed = Date.now() - start;

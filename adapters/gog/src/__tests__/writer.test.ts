@@ -1,7 +1,12 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { OutputWriter } from "@saas-mirror/core";
-import { writeMessage, writeLabels, writeThreadView, removeMessage } from "../writer.js";
-import type { GogMessageFull, GogLabel } from "../types.js";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { GogLabel, GogMessageFull } from "../types.js";
+import {
+  removeMessage,
+  writeLabels,
+  writeMessage,
+  writeThreadView,
+} from "../writer.js";
 
 function makeWriter(): OutputWriter & {
   written: Array<{ method: string; path: string; args: unknown[] }>;
@@ -9,9 +14,11 @@ function makeWriter(): OutputWriter & {
   const written: Array<{ method: string; path: string; args: unknown[] }> = [];
   return {
     written,
-    writeDocument: vi.fn(async (path: string, fm: Record<string, unknown>, body: string) => {
-      written.push({ method: "writeDocument", path, args: [fm, body] });
-    }),
+    writeDocument: vi.fn(
+      async (path: string, fm: Record<string, unknown>, body: string) => {
+        written.push({ method: "writeDocument", path, args: [fm, body] });
+      },
+    ),
     writeMeta: vi.fn(async (path: string, data: Record<string, unknown>) => {
       written.push({ method: "writeMeta", path, args: [data] });
     }),

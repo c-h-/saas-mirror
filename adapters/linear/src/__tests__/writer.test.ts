@@ -1,20 +1,20 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import * as fs from "node:fs";
-import * as path from "node:path";
 import * as os from "node:os";
-import { createOutputWriter, createLogger } from "@saas-mirror/core";
-import type { OutputWriter, Logger } from "@saas-mirror/core";
-import { LinearWriter } from "../writer.js";
+import * as path from "node:path";
+import type { Logger, OutputWriter } from "@saas-mirror/core";
+import { createLogger, createOutputWriter } from "@saas-mirror/core";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type {
+  CycleRecord,
+  IssueRecord,
+  LabelRecord,
+  LookupMaps,
+  ProjectRecord,
   TeamRecord,
   UserRecord,
-  LabelRecord,
   WorkflowStateRecord,
-  CycleRecord,
-  ProjectRecord,
-  IssueRecord,
-  LookupMaps,
 } from "../types.js";
+import { LinearWriter } from "../writer.js";
 
 // ─── Helpers ───
 
@@ -48,7 +48,9 @@ function makeLabel(partial: Partial<LabelRecord> = {}): LabelRecord {
   return { id: "label-1", name: "Bug", color: "#ff0000", ...partial };
 }
 
-function makeState(partial: Partial<WorkflowStateRecord> = {}): WorkflowStateRecord {
+function makeState(
+  partial: Partial<WorkflowStateRecord> = {},
+): WorkflowStateRecord {
   return {
     id: "state-1",
     name: "In Progress",
@@ -152,7 +154,9 @@ describe("LinearWriter", () => {
         makeTeam({ id: "t3", key: "OPS", name: "Operations" }),
       ];
       await writer.writeTeams(teams);
-      const data = readJson(path.join(tmpDir, "_meta/teams.json")) as TeamRecord[];
+      const data = readJson(
+        path.join(tmpDir, "_meta/teams.json"),
+      ) as TeamRecord[];
       expect(data).toHaveLength(3);
       expect(data[0].key).toBe("ENG");
       expect(data[1].key).toBe("DES");
@@ -162,7 +166,9 @@ describe("LinearWriter", () => {
     it("overwrites existing teams file", async () => {
       await writer.writeTeams([makeTeam({ id: "old" })]);
       await writer.writeTeams([makeTeam({ id: "new" })]);
-      const data = readJson(path.join(tmpDir, "_meta/teams.json")) as TeamRecord[];
+      const data = readJson(
+        path.join(tmpDir, "_meta/teams.json"),
+      ) as TeamRecord[];
       expect(data).toHaveLength(1);
       expect(data[0].id).toBe("new");
     });
@@ -180,10 +186,18 @@ describe("LinearWriter", () => {
     it("writes users with all fields", async () => {
       const users = [
         makeUser({ avatarUrl: "https://example.com/avatar.png" }),
-        makeUser({ id: "user-2", name: "Bob", email: "bob@example.com", displayName: "Bob", active: false }),
+        makeUser({
+          id: "user-2",
+          name: "Bob",
+          email: "bob@example.com",
+          displayName: "Bob",
+          active: false,
+        }),
       ];
       await writer.writeUsers(users);
-      const data = readJson(path.join(tmpDir, "_meta/users.json")) as UserRecord[];
+      const data = readJson(
+        path.join(tmpDir, "_meta/users.json"),
+      ) as UserRecord[];
       expect(data).toHaveLength(2);
       expect(data[0].avatarUrl).toBe("https://example.com/avatar.png");
       expect(data[1].active).toBe(false);
@@ -192,7 +206,9 @@ describe("LinearWriter", () => {
     it("writes users without optional avatarUrl", async () => {
       const users = [makeUser()];
       await writer.writeUsers(users);
-      const data = readJson(path.join(tmpDir, "_meta/users.json")) as UserRecord[];
+      const data = readJson(
+        path.join(tmpDir, "_meta/users.json"),
+      ) as UserRecord[];
       expect(data[0].avatarUrl).toBeUndefined();
     });
   });
@@ -212,7 +228,9 @@ describe("LinearWriter", () => {
         makeLabel({ id: "l2", name: "UI Bug", parentId: "l1" }),
       ];
       await writer.writeLabels(labels);
-      const data = readJson(path.join(tmpDir, "_meta/labels.json")) as LabelRecord[];
+      const data = readJson(
+        path.join(tmpDir, "_meta/labels.json"),
+      ) as LabelRecord[];
       expect(data).toHaveLength(2);
       expect(data[0].parentId).toBeUndefined();
       expect(data[1].parentId).toBe("l1");
@@ -231,11 +249,18 @@ describe("LinearWriter", () => {
     it("writes workflow states preserving all fields", async () => {
       const states = [
         makeState({ id: "s1", name: "Backlog", type: "backlog", position: 0 }),
-        makeState({ id: "s2", name: "In Progress", type: "started", position: 1 }),
+        makeState({
+          id: "s2",
+          name: "In Progress",
+          type: "started",
+          position: 1,
+        }),
         makeState({ id: "s3", name: "Done", type: "completed", position: 2 }),
       ];
       await writer.writeWorkflowStates(states);
-      const data = readJson(path.join(tmpDir, "_meta/workflow-states.json")) as WorkflowStateRecord[];
+      const data = readJson(
+        path.join(tmpDir, "_meta/workflow-states.json"),
+      ) as WorkflowStateRecord[];
       expect(data).toHaveLength(3);
       expect(data[0].type).toBe("backlog");
       expect(data[1].type).toBe("started");
@@ -254,11 +279,16 @@ describe("LinearWriter", () => {
 
     it("writes cycles with optional fields", async () => {
       const cycles = [
-        makeCycle({ name: "Sprint 5", completedAt: "2024-01-14T00:00:00.000Z" }),
+        makeCycle({
+          name: "Sprint 5",
+          completedAt: "2024-01-14T00:00:00.000Z",
+        }),
         makeCycle({ id: "cycle-2", number: 6 }),
       ];
       await writer.writeCycles(cycles);
-      const data = readJson(path.join(tmpDir, "_meta/cycles.json")) as CycleRecord[];
+      const data = readJson(
+        path.join(tmpDir, "_meta/cycles.json"),
+      ) as CycleRecord[];
       expect(data).toHaveLength(2);
       expect(data[0].name).toBe("Sprint 5");
       expect(data[0].completedAt).toBe("2024-01-14T00:00:00.000Z");
@@ -363,7 +393,10 @@ describe("LinearWriter", () => {
     });
 
     it("does not include date fields when not present", async () => {
-      const project = makeProject({ startDate: undefined, targetDate: undefined });
+      const project = makeProject({
+        startDate: undefined,
+        targetDate: undefined,
+      });
       const lookups = makeLookupMaps();
       await writer.writeProject(project, lookups);
 
@@ -373,7 +406,9 @@ describe("LinearWriter", () => {
     });
 
     it("includes description in the body", async () => {
-      const project = makeProject({ description: "This is a description of the project." });
+      const project = makeProject({
+        description: "This is a description of the project.",
+      });
       const lookups = makeLookupMaps();
       await writer.writeProject(project, lookups);
 
@@ -438,11 +473,17 @@ describe("LinearWriter", () => {
         [3, "Medium"],
         [4, "Low"],
       ] as [number, string][]) {
-        const issue = makeIssue({ id: `issue-p${priority}`, priority, identifier: `ENG-${priority}` });
+        const issue = makeIssue({
+          id: `issue-p${priority}`,
+          priority,
+          identifier: `ENG-${priority}`,
+        });
         const lookups = makeLookupMaps();
         await writer.writeIssue(issue, "ENG", lookups);
 
-        const content = readText(path.join(tmpDir, `issues/ENG/ENG-${priority}.md`));
+        const content = readText(
+          path.join(tmpDir, `issues/ENG/ENG-${priority}.md`),
+        );
         expect(content).toContain(`priorityLabel: ${label}`);
       }
     });
@@ -693,8 +734,16 @@ describe("LinearWriter", () => {
     it("includes relations in frontmatter", async () => {
       const issue = makeIssue({
         relations: [
-          { type: "blocks", relatedIssueId: "iss-2", relatedIssueIdentifier: "ENG-99" },
-          { type: "related", relatedIssueId: "iss-3", relatedIssueIdentifier: "DES-5" },
+          {
+            type: "blocks",
+            relatedIssueId: "iss-2",
+            relatedIssueIdentifier: "ENG-99",
+          },
+          {
+            type: "related",
+            relatedIssueId: "iss-3",
+            relatedIssueIdentifier: "DES-5",
+          },
         ],
       });
       const lookups = makeLookupMaps();
@@ -720,8 +769,18 @@ describe("LinearWriter", () => {
     it("includes attachments in frontmatter", async () => {
       const issue = makeIssue({
         attachments: [
-          { id: "att-1", title: "Screenshot", url: "https://example.com/img.png", createdAt: "2024-01-10T00:00:00.000Z" },
-          { id: "att-2", title: "Log file", url: "https://example.com/log.txt", createdAt: "2024-01-11T00:00:00.000Z" },
+          {
+            id: "att-1",
+            title: "Screenshot",
+            url: "https://example.com/img.png",
+            createdAt: "2024-01-10T00:00:00.000Z",
+          },
+          {
+            id: "att-2",
+            title: "Log file",
+            url: "https://example.com/log.txt",
+            createdAt: "2024-01-11T00:00:00.000Z",
+          },
         ],
       });
       const lookups = makeLookupMaps();
@@ -755,7 +814,9 @@ describe("LinearWriter", () => {
     });
 
     it("includes description in body", async () => {
-      const issue = makeIssue({ description: "The login form crashes when submitting." });
+      const issue = makeIssue({
+        description: "The login form crashes when submitting.",
+      });
       const lookups = makeLookupMaps();
       await writer.writeIssue(issue, "ENG", lookups);
 
@@ -778,7 +839,13 @@ describe("LinearWriter", () => {
       const user = makeUser({ id: "u1", displayName: "Alice" });
       const issue = makeIssue({
         comments: [
-          { id: "c1", body: "Looks good to me!", userId: "u1", createdAt: "2024-01-12T10:00:00.000Z", updatedAt: "2024-01-12T10:00:00.000Z" },
+          {
+            id: "c1",
+            body: "Looks good to me!",
+            userId: "u1",
+            createdAt: "2024-01-12T10:00:00.000Z",
+            updatedAt: "2024-01-12T10:00:00.000Z",
+          },
         ],
       });
       const lookups = makeLookupMaps({ users: new Map([["u1", user]]) });
@@ -793,7 +860,13 @@ describe("LinearWriter", () => {
     it("uses 'Unknown' for comments from unknown users", async () => {
       const issue = makeIssue({
         comments: [
-          { id: "c1", body: "A comment", userId: "unknown-user", createdAt: "2024-01-12T10:00:00.000Z", updatedAt: "2024-01-12T10:00:00.000Z" },
+          {
+            id: "c1",
+            body: "A comment",
+            userId: "unknown-user",
+            createdAt: "2024-01-12T10:00:00.000Z",
+            updatedAt: "2024-01-12T10:00:00.000Z",
+          },
         ],
       });
       const lookups = makeLookupMaps();
@@ -808,8 +881,20 @@ describe("LinearWriter", () => {
       const user2 = makeUser({ id: "u2", displayName: "Bob" });
       const issue = makeIssue({
         comments: [
-          { id: "c1", body: "First comment", userId: "u1", createdAt: "2024-01-12T10:00:00.000Z", updatedAt: "2024-01-12T10:00:00.000Z" },
-          { id: "c2", body: "Second comment", userId: "u2", createdAt: "2024-01-13T11:00:00.000Z", updatedAt: "2024-01-13T11:00:00.000Z" },
+          {
+            id: "c1",
+            body: "First comment",
+            userId: "u1",
+            createdAt: "2024-01-12T10:00:00.000Z",
+            updatedAt: "2024-01-12T10:00:00.000Z",
+          },
+          {
+            id: "c2",
+            body: "Second comment",
+            userId: "u2",
+            createdAt: "2024-01-13T11:00:00.000Z",
+            updatedAt: "2024-01-13T11:00:00.000Z",
+          },
         ],
       });
       const lookups = makeLookupMaps({
@@ -841,7 +926,13 @@ describe("LinearWriter", () => {
       const issue = makeIssue({
         description: "Some description",
         comments: [
-          { id: "c1", body: "A comment", userId: "u1", createdAt: "2024-01-12T10:00:00.000Z", updatedAt: "2024-01-12T10:00:00.000Z" },
+          {
+            id: "c1",
+            body: "A comment",
+            userId: "u1",
+            createdAt: "2024-01-12T10:00:00.000Z",
+            updatedAt: "2024-01-12T10:00:00.000Z",
+          },
         ],
       });
       const lookups = makeLookupMaps();
@@ -883,10 +974,29 @@ describe("LinearWriter", () => {
         description: "Detailed description here.",
         completedAt: "2024-02-28T00:00:00.000Z",
         archivedAt: "2024-03-01T00:00:00.000Z",
-        relations: [{ type: "blocks", relatedIssueId: "iss-2", relatedIssueIdentifier: "ENG-99" }],
-        attachments: [{ id: "att-1", title: "Design doc", url: "https://example.com/doc", createdAt: "2024-01-10T00:00:00.000Z" }],
+        relations: [
+          {
+            type: "blocks",
+            relatedIssueId: "iss-2",
+            relatedIssueIdentifier: "ENG-99",
+          },
+        ],
+        attachments: [
+          {
+            id: "att-1",
+            title: "Design doc",
+            url: "https://example.com/doc",
+            createdAt: "2024-01-10T00:00:00.000Z",
+          },
+        ],
         comments: [
-          { id: "cm1", body: "LGTM", userId: "u1", createdAt: "2024-01-15T00:00:00.000Z", updatedAt: "2024-01-15T00:00:00.000Z" },
+          {
+            id: "cm1",
+            body: "LGTM",
+            userId: "u1",
+            createdAt: "2024-01-15T00:00:00.000Z",
+            updatedAt: "2024-01-15T00:00:00.000Z",
+          },
         ],
       });
 
@@ -938,9 +1048,16 @@ describe("LinearWriter", () => {
 
     it("sanitizes the filename", async () => {
       const data = Buffer.from("test content");
-      await writer.writeAttachmentBinary("ENG-42", "file with spaces.txt", data);
+      await writer.writeAttachmentBinary(
+        "ENG-42",
+        "file with spaces.txt",
+        data,
+      );
 
-      const filePath = path.join(tmpDir, "attachments/ENG-42/file_with_spaces.txt");
+      const filePath = path.join(
+        tmpDir,
+        "attachments/ENG-42/file_with_spaces.txt",
+      );
       expect(fs.existsSync(filePath)).toBe(true);
     });
 
@@ -948,7 +1065,10 @@ describe("LinearWriter", () => {
       const data = Buffer.from("data");
       await writer.writeAttachmentBinary("ENG-42", "my:file*name?.txt", data);
 
-      const filePath = path.join(tmpDir, "attachments/ENG-42/my_file_name_.txt");
+      const filePath = path.join(
+        tmpDir,
+        "attachments/ENG-42/my_file_name_.txt",
+      );
       expect(fs.existsSync(filePath)).toBe(true);
     });
   });

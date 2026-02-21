@@ -5,7 +5,7 @@
  * resolution, and conversion to human-readable markdown.
  */
 
-import type { SlackMessage, SlackUser, UserMap, ChannelMap } from "./types.js";
+import type { ChannelMap, SlackMessage, UserMap } from "./types.js";
 
 // ─── Mention Resolution ───
 
@@ -19,36 +19,51 @@ export function resolveMentions(
   channelMap: ChannelMap,
 ): string {
   // Resolve user mentions: <@U0123456789> or <@U0123456789|display>
-  let resolved = text.replace(/<@([A-Z0-9]+)(?:\|([^>]+))?>/g, (_match, userId, display) => {
-    if (display) return `@${display}`;
-    const user = userMap.get(userId);
-    return user ? `@${user.displayName || user.name}` : `@${userId}`;
-  });
+  let resolved = text.replace(
+    /<@([A-Z0-9]+)(?:\|([^>]+))?>/g,
+    (_match, userId, display) => {
+      if (display) return `@${display}`;
+      const user = userMap.get(userId);
+      return user ? `@${user.displayName || user.name}` : `@${userId}`;
+    },
+  );
 
   // Resolve channel mentions: <#C0123456789|general> or <#C0123456789>
-  resolved = resolved.replace(/<#([A-Z0-9]+)(?:\|([^>]+))?>/g, (_match, channelId, display) => {
-    if (display) return `#${display}`;
-    const channel = channelMap.get(channelId);
-    return channel ? `#${channel.name}` : `#${channelId}`;
-  });
+  resolved = resolved.replace(
+    /<#([A-Z0-9]+)(?:\|([^>]+))?>/g,
+    (_match, channelId, display) => {
+      if (display) return `#${display}`;
+      const channel = channelMap.get(channelId);
+      return channel ? `#${channel.name}` : `#${channelId}`;
+    },
+  );
 
   // Resolve URLs: <http://example.com|Example> or <http://example.com>
-  resolved = resolved.replace(/<(https?:\/\/[^|>]+)(?:\|([^>]+))?>/g, (_match, url, label) => {
-    return label ? `[${label}](${url})` : url;
-  });
+  resolved = resolved.replace(
+    /<(https?:\/\/[^|>]+)(?:\|([^>]+))?>/g,
+    (_match, url, label) => {
+      return label ? `[${label}](${url})` : url;
+    },
+  );
 
   // Resolve mailto: <mailto:user@example.com|user@example.com>
-  resolved = resolved.replace(/<mailto:([^|>]+)(?:\|([^>]+))?>/g, (_match, email, label) => {
-    return label ?? email;
-  });
+  resolved = resolved.replace(
+    /<mailto:([^|>]+)(?:\|([^>]+))?>/g,
+    (_match, email, label) => {
+      return label ?? email;
+    },
+  );
 
   // Special mentions
   resolved = resolved.replace(/<!here>/g, "@here");
   resolved = resolved.replace(/<!channel>/g, "@channel");
   resolved = resolved.replace(/<!everyone>/g, "@everyone");
-  resolved = resolved.replace(/<!subteam\^[A-Z0-9]+(?:\|([^>]+))?>/g, (_match, label) => {
-    return label ? `@${label}` : "@group";
-  });
+  resolved = resolved.replace(
+    /<!subteam\^[A-Z0-9]+(?:\|([^>]+))?>/g,
+    (_match, label) => {
+      return label ? `@${label}` : "@group";
+    },
+  );
 
   return resolved;
 }
@@ -61,7 +76,10 @@ export function resolveMentions(
  * Convert Slack Block Kit blocks to plain text / markdown.
  * Falls back to the message text field if blocks are unavailable or empty.
  */
-export function blocksToText(blocks: unknown[] | undefined, fallbackText: string): string {
+export function blocksToText(
+  blocks: unknown[] | undefined,
+  fallbackText: string,
+): string {
   if (!blocks || blocks.length === 0) {
     return fallbackText;
   }
@@ -125,7 +143,7 @@ function richTextElementToText(element: any): string {
     }
     case "rich_text_preformatted": {
       const text = richTextSectionElements(element.elements ?? []);
-      return "```\n" + text + "\n```";
+      return `\`\`\`\n${text}\n\`\`\``;
     }
     default:
       return "";
@@ -148,7 +166,7 @@ function inlineElementToText(el: any): string {
       return text;
     }
     case "link":
-      return el.text ? `[${el.text}](${el.url})` : el.url ?? "";
+      return el.text ? `[${el.text}](${el.url})` : (el.url ?? "");
     case "emoji":
       return `:${el.name}:`;
     case "user":
@@ -250,10 +268,7 @@ export function renderMessageText(
 /**
  * Get display name for a message author.
  */
-export function getAuthorName(
-  message: SlackMessage,
-  userMap: UserMap,
-): string {
+export function getAuthorName(message: SlackMessage, userMap: UserMap): string {
   if (message.userId) {
     const user = userMap.get(message.userId);
     if (user) {
@@ -270,7 +285,7 @@ export function getAuthorName(
  */
 export function formatTimestamp(ts: string): string {
   const epochSeconds = parseFloat(ts);
-  if (isNaN(epochSeconds)) return ts;
+  if (Number.isNaN(epochSeconds)) return ts;
   const date = new Date(epochSeconds * 1000);
   return date.toISOString();
 }
@@ -280,7 +295,7 @@ export function formatTimestamp(ts: string): string {
  */
 export function formatTime(ts: string): string {
   const epochSeconds = parseFloat(ts);
-  if (isNaN(epochSeconds)) return ts;
+  if (Number.isNaN(epochSeconds)) return ts;
   const date = new Date(epochSeconds * 1000);
   return date.toLocaleTimeString("en-US", {
     hour: "2-digit",
@@ -294,7 +309,7 @@ export function formatTime(ts: string): string {
  */
 export function formatDate(ts: string): string {
   const epochSeconds = parseFloat(ts);
-  if (isNaN(epochSeconds)) return ts;
+  if (Number.isNaN(epochSeconds)) return ts;
   const date = new Date(epochSeconds * 1000);
   return date.toISOString().split("T")[0]!;
 }

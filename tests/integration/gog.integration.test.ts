@@ -1,0 +1,90 @@
+/**
+ * Integration test for the GOG (Gmail-via-gog-CLI) adapter.
+ *
+ * Requires GOG_ACCOUNT to be set and the `gog` CLI to be available
+ * on the PATH (or at the path specified by GOG_PATH).
+ * Skipped entirely when credentials are not available.
+ */
+
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import type {
+  AdapterState,
+  Logger,
+  RateLimiter,
+  SyncContext,
+} from "@saas-mirror/core";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { GogAdapter } from "../../adapters/gog/src/adapter.js";
+
+const hasCredentials = Boolean(process.env.GOG_ACCOUNT);
+
+describe.skipIf(!hasCredentials)("GogAdapter integration", () => {
+  let outputDir: string;
+
+  beforeAll(async () => {
+    outputDir = await mkdtemp(join(tmpdir(), "saas-mirror-gog-"));
+  });
+
+  afterAll(async () => {
+    if (outputDir) {
+      await rm(outputDir, { recursive: true, force: true });
+    }
+  });
+
+  it("should sync Gmail data via gog CLI without errors", async () => {
+    const adapter = new GogAdapter();
+    const ctx = createSyncContext("full", outputDir);
+
+    const result = await adapter.sync(ctx);
+
+    expect(result.adapter).toBe("gog");
+    expect(result.mode).toBe("full");
+    expect(result.errors).toEqual([]);
+    expect(result.itemsSynced).toBeGreaterThan(0);
+    expect(result.durationMs).toBeGreaterThan(0);
+  });
+});
+
+// ── Helpers ──
+
+function createSyncContext(
+  mode: "full" | "incremental",
+  outputDir: string,
+): SyncContext {
+  return {
+    mode,
+    outputDir,
+    state: createMockState(),
+    rateLimiter: createNoopRateLimiter(),
+    logger: createSilentLogger(),
+    signal: new AbortController().signal,
+  };
+}
+
+function createMockState(): AdapterState {
+  return {
+    lastSyncAt: null,
+    cursors: {},
+    metadata: {},
+    async checkpoint() {},
+  };
+}
+
+function createNoopRateLimiter(): RateLimiter {
+  return {
+    async acquire() {},
+    backoff() {},
+    updateFromHeaders() {},
+  };
+}
+
+function createSilentLogger(): Logger {
+  return {
+    info() {},
+    warn() {},
+    error() {},
+    progress() {},
+  };
+}

@@ -1,11 +1,11 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
-  renderRichText,
+  extractPageTitle,
   renderBlocks,
   renderPropertyValue,
-  extractPageTitle,
+  renderRichText,
 } from "../renderer.js";
-import type { BlockTree, NotionRichText, NotionAnnotations } from "../types.js";
+import type { BlockTree, NotionAnnotations, NotionRichText } from "../types.js";
 
 // ─── Helper Factories ───
 
@@ -79,18 +79,12 @@ function textBlock(
   extras: Record<string, unknown> = {},
   opts: { id?: string; children?: BlockTree[] } = {},
 ): BlockTree {
-  return block(
-    type,
-    { rich_text: [richText(text)], ...extras },
-    opts,
-  );
+  return block(type, { rich_text: [richText(text)], ...extras }, opts);
 }
 
 function tableRow(cells: string[][]): BlockTree {
   return block("table_row", {
-    cells: cells.map((cellTexts) =>
-      cellTexts.map((t) => richText(t)),
-    ),
+    cells: cells.map((cellTexts) => cellTexts.map((t) => richText(t))),
   });
 }
 
@@ -120,15 +114,13 @@ describe("renderRichText", () => {
   });
 
   it("renders inline code", () => {
-    expect(renderRichText([annotated("code", { code: true })])).toBe(
-      "`code`",
-    );
+    expect(renderRichText([annotated("code", { code: true })])).toBe("`code`");
   });
 
   it("renders underline text", () => {
-    expect(
-      renderRichText([annotated("underlined", { underline: true })]),
-    ).toBe("<u>underlined</u>");
+    expect(renderRichText([annotated("underlined", { underline: true })])).toBe(
+      "<u>underlined</u>",
+    );
   });
 
   it("renders linked text", () => {
@@ -157,9 +149,7 @@ describe("renderRichText", () => {
       annotations: { ...defaultAnnotations, bold: true },
       text: { content: "link", link: { url: "https://example.com" } },
     });
-    expect(renderRichText([segment])).toBe(
-      "[**link**](https://example.com)",
-    );
+    expect(renderRichText([segment])).toBe("[**link**](https://example.com)");
   });
 
   it("does not apply bold/italic inside inline code", () => {
@@ -240,7 +230,12 @@ describe("renderBlocks", () => {
 
     it("renders paragraph with children", async () => {
       const child = textBlock("paragraph", "nested");
-      const parent = textBlock("paragraph", "parent", {}, { children: [child] });
+      const parent = textBlock(
+        "paragraph",
+        "parent",
+        {},
+        { children: [child] },
+      );
       const result = await renderBlocks([parent]);
       expect(result).toContain("parent");
       expect(result).toContain("nested");
@@ -291,9 +286,14 @@ describe("renderBlocks", () => {
 
     it("renders nested bullets with indentation", async () => {
       const child = textBlock("bulleted_list_item", "nested");
-      const parent = textBlock("bulleted_list_item", "parent", {}, {
-        children: [child],
-      });
+      const parent = textBlock(
+        "bulleted_list_item",
+        "parent",
+        {},
+        {
+          children: [child],
+        },
+      );
       const result = await renderBlocks([parent]);
       expect(result).toContain("- parent");
       // Children are rendered via a nested renderBlocks call with indent+1.
@@ -305,12 +305,22 @@ describe("renderBlocks", () => {
 
     it("renders deeply nested bullets", async () => {
       const grandchild = textBlock("bulleted_list_item", "level3");
-      const child = textBlock("bulleted_list_item", "level2", {}, {
-        children: [grandchild],
-      });
-      const parent = textBlock("bulleted_list_item", "level1", {}, {
-        children: [child],
-      });
+      const child = textBlock(
+        "bulleted_list_item",
+        "level2",
+        {},
+        {
+          children: [grandchild],
+        },
+      );
+      const parent = textBlock(
+        "bulleted_list_item",
+        "level1",
+        {},
+        {
+          children: [child],
+        },
+      );
       const result = await renderBlocks([parent]);
       // Each nested renderBlocks trims its output, so indentation from
       // the indent parameter is trimmed on the first line of each child.
@@ -353,9 +363,14 @@ describe("renderBlocks", () => {
 
     it("renders nested numbered list", async () => {
       const child = textBlock("numbered_list_item", "sub item");
-      const parent = textBlock("numbered_list_item", "main item", {}, {
-        children: [child],
-      });
+      const parent = textBlock(
+        "numbered_list_item",
+        "main item",
+        {},
+        {
+          children: [child],
+        },
+      );
       const result = await renderBlocks([parent]);
       expect(result).toContain("1. main item");
       // Inner renderBlocks trims the child output, so leading indent is stripped
@@ -461,9 +476,14 @@ describe("renderBlocks", () => {
 
     it("renders callout with children", async () => {
       const child = textBlock("paragraph", "details here");
-      const parent = textBlock("callout", "Warning", {
-        icon: { type: "emoji", emoji: "\u26a0\ufe0f" },
-      }, { children: [child] });
+      const parent = textBlock(
+        "callout",
+        "Warning",
+        {
+          icon: { type: "emoji", emoji: "\u26a0\ufe0f" },
+        },
+        { children: [child] },
+      );
       const result = await renderBlocks([parent]);
       expect(result).toContain("> \u26a0\ufe0f **Warning**");
       expect(result).toContain("> details here");
@@ -499,9 +519,7 @@ describe("renderBlocks", () => {
         }),
       ];
       const result = await renderBlocks(blocks);
-      expect(result).toBe(
-        "![A nice photo](https://img.example.com/photo.png)",
-      );
+      expect(result).toBe("![A nice photo](https://img.example.com/photo.png)");
     });
 
     it("renders image without caption using 'image' as alt", async () => {
@@ -528,11 +546,15 @@ describe("renderBlocks", () => {
     });
 
     it("uses resolveFileUrl for Notion-hosted images when provided", async () => {
-      const imgBlock = block("image", {
-        type: "file",
-        file: { url: "https://s3.notion.so/image.png" },
-        caption: [richText("resolved")],
-      }, { id: "img-123" });
+      const imgBlock = block(
+        "image",
+        {
+          type: "file",
+          file: { url: "https://s3.notion.so/image.png" },
+          caption: [richText("resolved")],
+        },
+        { id: "img-123" },
+      );
       const result = await renderBlocks([imgBlock], {
         resolveFileUrl: async (_url, _blockId, _hint) => "./assets/image.png",
       });
@@ -540,10 +562,14 @@ describe("renderBlocks", () => {
     });
 
     it("falls back to original URL when resolveFileUrl throws", async () => {
-      const imgBlock = block("image", {
-        type: "file",
-        file: { url: "https://s3.notion.so/fail.png" },
-      }, { id: "img-fail" });
+      const imgBlock = block(
+        "image",
+        {
+          type: "file",
+          file: { url: "https://s3.notion.so/fail.png" },
+        },
+        { id: "img-fail" },
+      );
       const result = await renderBlocks([imgBlock], {
         resolveFileUrl: async () => {
           throw new Error("download failed");
@@ -566,11 +592,11 @@ describe("renderBlocks", () => {
     });
 
     it("renders bookmark without caption using URL as label", async () => {
-      const blocks = [
-        block("bookmark", { url: "https://example.com" }),
-      ];
+      const blocks = [block("bookmark", { url: "https://example.com" })];
       const result = await renderBlocks(blocks);
-      expect(result).toBe("[Bookmark: https://example.com](https://example.com)");
+      expect(result).toBe(
+        "[Bookmark: https://example.com](https://example.com)",
+      );
     });
   });
 
@@ -601,10 +627,7 @@ describe("renderBlocks", () => {
     });
 
     it("pads rows with fewer columns than the header", async () => {
-      const rows = [
-        tableRow([["A"], ["B"], ["C"]]),
-        tableRow([["1"]]),
-      ];
+      const rows = [tableRow([["A"], ["B"], ["C"]]), tableRow([["1"]])];
       const tableBlock = block(
         "table",
         { has_column_header: true },
@@ -617,16 +640,10 @@ describe("renderBlocks", () => {
 
     it("renders a table with rich text in cells", async () => {
       const headerRow = block("table_row", {
-        cells: [
-          [annotated("Header", { bold: true })],
-          [richText("Value")],
-        ],
+        cells: [[annotated("Header", { bold: true })], [richText("Value")]],
       });
       const dataRow = block("table_row", {
-        cells: [
-          [richText("key")],
-          [linked("link", "https://example.com")],
-        ],
+        cells: [[richText("key")], [linked("link", "https://example.com")]],
       });
       const tableBlock = block(
         "table",
@@ -642,9 +659,14 @@ describe("renderBlocks", () => {
   describe("toggle", () => {
     it("renders toggle as HTML details/summary", async () => {
       const child = textBlock("paragraph", "hidden content");
-      const toggleBlock = textBlock("toggle", "Click me", {}, {
-        children: [child],
-      });
+      const toggleBlock = textBlock(
+        "toggle",
+        "Click me",
+        {},
+        {
+          children: [child],
+        },
+      );
       const result = await renderBlocks([toggleBlock]);
       expect(result).toContain("<details>");
       expect(result).toContain("<summary>Click me</summary>");
@@ -669,9 +691,13 @@ describe("renderBlocks", () => {
     });
 
     it("renders child_page with slug from context", async () => {
-      const cpBlock = block("child_page", { title: "Sub Page" }, {
-        id: "page-abc",
-      });
+      const cpBlock = block(
+        "child_page",
+        { title: "Sub Page" },
+        {
+          id: "page-abc",
+        },
+      );
       const result = await renderBlocks([cpBlock], {
         childPageSlugs: new Map([["page-abc", "sub-page"]]),
       });
@@ -691,9 +717,13 @@ describe("renderBlocks", () => {
     });
 
     it("renders child_database with slug from context", async () => {
-      const dbBlock = block("child_database", { title: "My DB" }, {
-        id: "db-xyz",
-      });
+      const dbBlock = block(
+        "child_database",
+        { title: "My DB" },
+        {
+          id: "db-xyz",
+        },
+      );
       const result = await renderBlocks([dbBlock], {
         childDbSlugs: new Map([["db-xyz", "my-db"]]),
       });
@@ -728,9 +758,7 @@ describe("renderBlocks", () => {
     });
 
     it("renders embed without caption", async () => {
-      const blocks = [
-        block("embed", { url: "https://example.com/widget" }),
-      ];
+      const blocks = [block("embed", { url: "https://example.com/widget" })];
       const result = await renderBlocks(blocks);
       expect(result).toBe("[Embed](https://example.com/widget)");
     });
@@ -871,12 +899,20 @@ describe("renderBlocks", () => {
 
   describe("column_list", () => {
     it("renders columns sequentially", async () => {
-      const col1 = block("column", {}, {
-        children: [textBlock("paragraph", "Column A")],
-      });
-      const col2 = block("column", {}, {
-        children: [textBlock("paragraph", "Column B")],
-      });
+      const col1 = block(
+        "column",
+        {},
+        {
+          children: [textBlock("paragraph", "Column A")],
+        },
+      );
+      const col2 = block(
+        "column",
+        {},
+        {
+          children: [textBlock("paragraph", "Column B")],
+        },
+      );
       const colList = block("column_list", {}, { children: [col1, col2] });
       const result = await renderBlocks([colList]);
       expect(result).toContain("Column A");
@@ -886,9 +922,13 @@ describe("renderBlocks", () => {
 
   describe("unknown block type", () => {
     it("renders an HTML comment for unsupported types", async () => {
-      const blocks = [block("some_future_type", { rich_text: [richText("content")] })];
+      const blocks = [
+        block("some_future_type", { rich_text: [richText("content")] }),
+      ];
       const result = await renderBlocks(blocks);
-      expect(result).toBe("<!-- unsupported block: some_future_type --> content");
+      expect(result).toBe(
+        "<!-- unsupported block: some_future_type --> content",
+      );
     });
 
     it("renders unknown block without text", async () => {

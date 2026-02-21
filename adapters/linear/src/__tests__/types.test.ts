@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { PRIORITY_LABELS, INVERSE_RELATION_TYPES } from "../types.js";
+import { describe, expect, it } from "vitest";
+import { INVERSE_RELATION_TYPES, PRIORITY_LABELS } from "../types.js";
 
 describe("PRIORITY_LABELS", () => {
   it("maps priority 0 to None", () => {
@@ -44,7 +44,7 @@ describe("PRIORITY_LABELS", () => {
 
 describe("INVERSE_RELATION_TYPES", () => {
   it("maps blocks to blocked-by", () => {
-    expect(INVERSE_RELATION_TYPES["blocks"]).toBe("blocked-by");
+    expect(INVERSE_RELATION_TYPES.blocks).toBe("blocked-by");
   });
 
   it("maps blocked-by to blocks", () => {
@@ -52,7 +52,7 @@ describe("INVERSE_RELATION_TYPES", () => {
   });
 
   it("maps duplicate to duplicate-of", () => {
-    expect(INVERSE_RELATION_TYPES["duplicate"]).toBe("duplicate-of");
+    expect(INVERSE_RELATION_TYPES.duplicate).toBe("duplicate-of");
   });
 
   it("maps duplicate-of to duplicate", () => {
@@ -60,7 +60,7 @@ describe("INVERSE_RELATION_TYPES", () => {
   });
 
   it("maps related to related (symmetric)", () => {
-    expect(INVERSE_RELATION_TYPES["related"]).toBe("related");
+    expect(INVERSE_RELATION_TYPES.related).toBe("related");
   });
 
   it("has exactly 5 entries", () => {
@@ -89,11 +89,11 @@ describe("INVERSE_RELATION_TYPES", () => {
   });
 
   it("related is its own inverse", () => {
-    expect(INVERSE_RELATION_TYPES["related"]).toBe("related");
+    expect(INVERSE_RELATION_TYPES.related).toBe("related");
   });
 
   it("returns undefined for unknown relation types", () => {
-    expect(INVERSE_RELATION_TYPES["unknown"]).toBeUndefined();
+    expect(INVERSE_RELATION_TYPES.unknown).toBeUndefined();
     expect(INVERSE_RELATION_TYPES["depends-on"]).toBeUndefined();
   });
 });

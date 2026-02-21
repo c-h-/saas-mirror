@@ -23,9 +23,9 @@ jobs:
           cache: yarn
       - name: Install dependencies
         run: yarn install --immutable
-      - name: Type check
-        run: yarn typecheck
       - name: Build
         run: yarn build
+      - name: Lint
+        run: yarn lint
       - name: Test
         run: yarn test

@@ -9,26 +9,25 @@
 
 import type {
   Adapter,
-  SyncContext,
-  SyncResult,
-  SyncError,
-  OutputWriter,
   Logger,
+  OutputWriter,
+  SyncContext,
+  SyncError,
+  SyncResult,
 } from "@saas-mirror/core";
-import { withRetry, createOutputWriter } from "@saas-mirror/core";
+import { createOutputWriter, withRetry } from "@saas-mirror/core";
 import { GogCli } from "./cli.js";
 import type {
   GogLabel,
   GogMessageFull,
-  GogMessageSummary,
-  GogSyncMetadata,
   GogMimePart,
+  GogSyncMetadata,
 } from "./types.js";
 import {
-  writeMessage,
-  writeLabels,
-  writeThreadView,
   removeMessage,
+  writeLabels,
+  writeMessage,
+  writeThreadView,
 } from "./writer.js";
 
 // ─── Constants ───
@@ -117,7 +116,9 @@ export class GogAdapter implements Adapter {
     await state.checkpoint();
 
     const durationMs = Date.now() - startTime;
-    logger.info(`Sync complete: ${itemsSynced} items, ${itemsFailed} failed`, { durationMs });
+    logger.info(`Sync complete: ${itemsSynced} items, ${itemsFailed} failed`, {
+      durationMs,
+    });
 
     return {
       adapter: ADAPTER_NAME,
@@ -183,7 +184,9 @@ async function fullSync(
   // Skip already-fetched messages (resumability)
   const alreadyFetched = new Set(metadata.fetchedMessageIds);
   const toFetch = allMessageIds.filter((id) => !alreadyFetched.has(id));
-  logger.info(`${toFetch.length} messages to fetch (${alreadyFetched.size} already fetched)`);
+  logger.info(
+    `${toFetch.length} messages to fetch (${alreadyFetched.size} already fetched)`,
+  );
 
   // Track thread messages for thread views
   const threadMessages = new Map<string, GogMessageFull[]>();
@@ -232,13 +235,10 @@ async function fullSync(
           if (!threadMessages.has(threadId)) {
             threadMessages.set(threadId, []);
           }
-          threadMessages.get(threadId)!.push(msg);
+          threadMessages.get(threadId)?.push(msg);
 
           // Track highest historyId
-          if (
-            !highestHistoryId ||
-            msg.message.historyId > highestHistoryId
-          ) {
+          if (!highestHistoryId || msg.message.historyId > highestHistoryId) {
             highestHistoryId = msg.message.historyId;
           }
 
@@ -268,7 +268,11 @@ async function fullSync(
     // Log progress
     const done = Math.min(i + FETCH_CONCURRENCY, toFetch.length);
     if (done % 50 === 0 || done === toFetch.length) {
-      logger.progress(synced + alreadyFetched.size, allMessageIds.length, "Messages");
+      logger.progress(
+        synced + alreadyFetched.size,
+        allMessageIds.length,
+        "Messages",
+      );
     }
 
     // Checkpoint periodically
@@ -341,8 +345,12 @@ async function incrementalSync(
       }
 
       for (const record of result.history ?? []) {
-        const added = record.messagesAdded as Array<{ message: { id: string } }> | undefined;
-        const deleted = record.messagesDeleted as Array<{ message: { id: string } }> | undefined;
+        const added = record.messagesAdded as
+          | Array<{ message: { id: string } }>
+          | undefined;
+        const deleted = record.messagesDeleted as
+          | Array<{ message: { id: string } }>
+          | undefined;
 
         for (const item of added ?? []) {
           addedIds.add(item.message.id);
@@ -364,9 +372,7 @@ async function incrementalSync(
     throw err;
   }
 
-  logger.info(
-    `History: ${addedIds.size} added, ${deletedIds.size} deleted`,
-  );
+  logger.info(`History: ${addedIds.size} added, ${deletedIds.size} deleted`);
 
   // Fetch added/changed messages
   for (const msgId of addedIds) {
@@ -493,7 +499,11 @@ function errorMessage(err: unknown): string {
 
 function isRateLimitError(err: unknown): boolean {
   const msg = errorMessage(err);
-  return msg.includes("rateLimitExceeded") || msg.includes("429") || msg.includes("Quota exceeded");
+  return (
+    msg.includes("rateLimitExceeded") ||
+    msg.includes("429") ||
+    msg.includes("Quota exceeded")
+  );
 }
 
 function throwIfAborted(signal: AbortSignal): void {

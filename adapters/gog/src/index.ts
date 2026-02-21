@@ -1,22 +1,20 @@
 // Adapter
 export { GogAdapter } from "./adapter.js";
-
+// CLI wrapper (for advanced usage / testing)
+export { GogCli } from "./cli.js";
 // Types
 export type {
   GogLabel,
-  GogMessageSummary,
   GogMessageFull,
+  GogMessageSummary,
   GogMimePart,
   GogSyncMetadata,
 } from "./types.js";
 
-// CLI wrapper (for advanced usage / testing)
-export { GogCli } from "./cli.js";
-
 // Writer utilities
 export {
-  writeMessage,
-  writeLabels,
-  writeThreadView,
   removeMessage,
+  writeLabels,
+  writeMessage,
+  writeThreadView,
 } from "./writer.js";

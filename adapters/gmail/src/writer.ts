@@ -10,10 +10,10 @@
  *   _labels.json                 – Label id→name mapping
  */
 
-import type { OutputWriter, Logger } from "@saas-mirror/core";
+import type { Logger, OutputWriter } from "@saas-mirror/core";
 import { sanitizeFilename } from "@saas-mirror/core";
-import type { GmailMessage, GmailLabel, AttachmentMeta } from "./types.js";
 import { bodyToMarkdown } from "./mime.js";
+import type { GmailLabel, GmailMessage } from "./types.js";
 
 // ─── Label helpers ───
 
@@ -62,7 +62,7 @@ export async function writeMessage(
       const safeName = sanitizeFilename(a.filename);
       return `- [${a.filename}](../attachments/${msg.id}/${safeName}) (${sizeKb} KB)`;
     });
-    attachmentSection = "\n\nAttachments:\n" + lines.join("\n");
+    attachmentSection = `\n\nAttachments:\n${lines.join("\n")}`;
   }
 
   await writer.writeDocument(
