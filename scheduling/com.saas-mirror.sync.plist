@@ -7,12 +7,12 @@
   then incrementally re-indexes changed files into the retrieval-skill vector store.
   
   Install:
-    ln -sf ~/personal/saas-mirror/scheduling/com.kindo.saas-mirror.plist ~/Library/LaunchAgents/
-    launchctl load ~/Library/LaunchAgents/com.kindo.saas-mirror.plist
-  
+    ln -sf /path/to/saas-mirror/scheduling/com.saas-mirror.sync.plist ~/Library/LaunchAgents/
+    launchctl load ~/Library/LaunchAgents/com.saas-mirror.sync.plist
+
   Uninstall:
-    launchctl unload ~/Library/LaunchAgents/com.kindo.saas-mirror.plist
-    rm ~/Library/LaunchAgents/com.kindo.saas-mirror.plist
+    launchctl unload ~/Library/LaunchAgents/com.saas-mirror.sync.plist
+    rm ~/Library/LaunchAgents/com.saas-mirror.sync.plist
   
   Logs: /tmp/saas-mirror.log
   Status: launchctl list | grep saas-mirror
@@ -20,14 +20,14 @@
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.kindo.saas-mirror</string>
+    <string>com.saas-mirror.sync</string>
     <key>ProgramArguments</key>
     <array>
         <string>/bin/bash</string>
         <string>scheduling/sync-and-index.sh</string>
     </array>
     <key>WorkingDirectory</key>
-    <string>/Users/ms/personal/saas-mirror</string>
+    <string>/path/to/saas-mirror</string>
     <key>StartInterval</key>
     <integer>1800</integer>
     <key>StandardOutPath</key>

@@ -1,276 +1,68 @@
 # saas-mirror
 
-Local replication of SaaS data (Slack, Notion, Linear, Gmail) into Markdown files for embedding, RAG, and semantic search.
+Local replication of SaaS data into Markdown files for embedding, RAG, and semantic search.
+
+## Why
+
+AI-powered search and retrieval work best on local, structured data. But your team's knowledge lives in Slack, Notion, Linear, and Gmail — behind APIs with rate limits, pagination, and authentication quirks.
+
+**saas-mirror** solves this by syncing SaaS data into a local directory of Markdown files with YAML frontmatter and JSON sidecars. The output is designed for embedding pipelines, vector databases, and RAG systems. Run it on a schedule and your local corpus stays current.
 
 ## Features
 
-- **5 adapters**: Slack, Notion, Linear, Gmail (raw OAuth2), GOG (Gmail via `gog` CLI)
-- **Full hydration + incremental sync**: first run fetches everything; subsequent runs fetch only changes
-- **Crash-resumable**: state checkpointed after each entity batch — interrupted syncs resume where they left off
-- **Markdown + YAML frontmatter output**: every document is RAG-ready, with structured metadata in frontmatter and JSON sidecars
-- **Per-entity error isolation**: one failed page/channel/issue/email never aborts the entire sync
-- **Rate limiting**: adapts to each API's model (token bucket, tiered, unit-based, header-driven)
-- **Binary asset downloads**: attachments, images, and files stored alongside their parent documents
+- **5 adapters** — Slack, Notion, Linear, Gmail (OAuth2), GOG (Gmail via `gog` CLI)
+- **Full + incremental sync** — first run fetches everything; subsequent runs fetch only changes
+- **Crash-resumable** — state checkpointed after each batch; interrupted syncs resume where they left off
+- **Markdown output** — every document has YAML frontmatter + JSON sidecar for programmatic access
+- **Per-entity error isolation** — one failed page/channel/issue never aborts the entire sync
+- **Adaptive rate limiting** — token bucket, tiered, unit-based, and header-driven strategies per API
+- **Binary downloads** — attachments, images, and files stored alongside their parent documents
+- **Daemon mode** — long-running process with configurable sync interval
 
 ## Quick Start
 
 ```bash
-# 1. Install dependencies
+# Install dependencies (Node.js >= 20, Yarn 4.x via Corepack)
+corepack enable
 yarn install
 
-# 2. Configure credentials
+# Configure credentials
 cp .env.example .env.local
 # Edit .env.local with your API keys (see Configuration below)
 
-# 3. Full hydration (first run)
+# Full sync (first run)
 yarn sync:full
 
-# 4. Incremental sync (subsequent runs / cron)
+# Incremental sync (subsequent runs)
 yarn sync
 ```
 
-## Project Structure
+## Architecture
 
 ```
-packages/
-  core/             Shared types, sync engine, rate limiter, state manager,
-                    output writer, retry, slugify, logger, CLI
-adapters/
-  slack/            Slack Conversations API adapter
-  notion/           Notion Search + Blocks API adapter
-  linear/           Linear GraphQL API adapter
-  gmail/            Gmail REST API adapter (raw OAuth2 credentials)
-  gog/              Gmail via `gog` CLI adapter (OAuth handled by keyring)
-data/               Local output directory (gitignored)
+┌──────────────────────────────────────────────────┐
+│                   CLI (Commander)                 │
+│          sync | status | adapters | daemon        │
+├──────────────────────────────────────────────────┤
+│                  SyncEngine                       │
+│   Orchestrates adapters, manages lifecycle        │
+├──────┬──────┬──────┬──────┬──────────────────────┤
+│Slack │Notion│Linear│Gmail │ GOG                   │
+│  ▼   │  ▼   │  ▼   │  ▼   │  ▼                   │
+│ API  │ API  │ GQL  │OAuth2│ CLI                   │
+├──────┴──────┴──────┴──────┴──────────────────────┤
+│              Core Framework                       │
+│  State · RateLimiter · Output · Retry · Logger    │
+└──────────────────────────────────────────────────┘
+         │
+         ▼
+    data/<adapter>/
+    ├── documents.md      (YAML frontmatter + Markdown)
+    ├── _meta.json        (JSON sidecar)
+    └── attachments/      (binary files)
 ```
 
-## CLI Usage
-
-```bash
-# Sync all configured adapters (incremental by default)
-yarn sync
-
-# Full hydration of all adapters
-yarn sync:full
-
-# Sync a specific adapter
-yarn sync -- --adapter slack
-yarn sync:full -- --adapter linear
-
-# Check sync status (last sync time, item counts)
-yarn sync -- status
-
-# List available adapters
-yarn sync -- adapters
-```
-
-Or run the CLI directly:
-
-```bash
-node --import tsx/esm packages/core/src/cli.ts sync --adapter notion --full
-node --import tsx/esm packages/core/src/cli.ts status
-node --import tsx/esm packages/core/src/cli.ts adapters
-```
-
-## Configuration
-
-### Environment Variables
-
-Copy `.env.example` to `.env.local` and fill in your credentials:
-
-#### Slack
-
-| Variable | Description |
-|----------|-------------|
-| `SLACK_BOT_TOKEN` | Bot token (`xoxb-...`) or user token (`xoxp-...`) with `channels:history`, `channels:read`, `users:read` scopes |
-| `SLACK_SKIP_DMS` | Set to `true` to skip DMs and group DMs (default: `false`) |
-| `SLACK_SKIP_FILES` | Set to `true` to skip file downloads (default: `false`) |
-
-#### Notion
-
-| Variable | Description |
-|----------|-------------|
-| `NOTION_TOKEN` | Internal integration token (`ntn_...`) — must have access to target pages/databases |
-
-#### Linear
-
-| Variable | Description |
-|----------|-------------|
-| `LINEAR_API_KEY` | Personal API key (`lin_api_...`) from Linear Settings > API |
-| `LINEAR_TEAM_KEYS` | Comma-separated team keys to sync (e.g., `ENG,PROD`). Omit to sync all teams. |
-| `LINEAR_INCLUDE_ARCHIVED` | Include archived issues (default: `true`) |
-| `LINEAR_DOWNLOAD_ATTACHMENTS` | Download file attachments (default: `true`) |
-
-#### Gmail
-
-| Variable | Description |
-|----------|-------------|
-| `GMAIL_CLIENT_ID` | OAuth2 client ID from Google Cloud Console |
-| `GMAIL_CLIENT_SECRET` | OAuth2 client secret |
-| `GMAIL_REFRESH_TOKEN` | OAuth2 refresh token (obtain via OAuth flow) |
-| `GMAIL_MAX_ATTACHMENT_MB` | Max attachment size to download in MB (default: `25`) |
-| `GMAIL_INCLUDE_SPAM_TRASH` | Include spam/trash messages (default: `false`) |
-| `GMAIL_INCLUDE_DRAFTS` | Include draft messages (default: `false`) |
-| `GMAIL_BATCH_SIZE` | Messages per page when listing (default: `500`, max: `500`) |
-| `GMAIL_CONCURRENCY` | Parallel message fetches (default: `2`) |
-
-#### GOG (Gmail via `gog` CLI)
-
-The GOG adapter uses the [`gog` CLI](https://github.com/c-h-/gog) to access Gmail. The `gog` CLI handles OAuth via its own keyring, so no raw OAuth2 credentials are needed.
-
-| Variable | Description |
-|----------|-------------|
-| `GOG_ACCOUNT` | Gmail account email (e.g., `charlie@kindo.ai`). Required to enable the adapter. |
-| `GOG_PATH` | Path to `gog` binary (default: `gog` on PATH, or `/opt/homebrew/bin/gog`) |
-
-Prerequisites: `gog` must be installed and authenticated (`gog auth login`).
-
-### Output Directory
-
-All output is written to `./data/<adapter-name>/`. The `data/` directory is gitignored.
-
-## Output Format
-
-Every adapter produces the same consistent output structure:
-
-### Markdown Documents
-
-```markdown
----
-source: slack
-type: message
-id: "C01234"
-title: "Channel Name"
-date: "2026-01-15T10:30:00Z"
-# ... adapter-specific fields
----
-
-# Channel Name
-
-(Content body in Markdown)
-```
-
-### JSON Metadata Sidecars
-
-Each markdown document has a companion `_meta.json` or `.meta.json` file with full structured metadata for programmatic access.
-
-### Directory Layout
-
-```
-data/
-├── slack/
-│   ├── channels/{channel-slug}/messages.md
-│   ├── channels/{channel-slug}/messages.jsonl
-│   ├── channels/{channel-slug}/_meta.json
-│   ├── threads/{channel-slug}/{thread-ts}.md
-│   ├── files/{file-id}/{filename}
-│   └── _meta/{users,channels}.json
-├── notion/
-│   ├── {page-slug}/index.md
-│   ├── {page-slug}/_meta.json
-│   ├── {page-slug}/{child-page-slug}/...
-│   ├── {db-slug}/_db_schema.json
-│   ├── {db-slug}/rows/{row-slug}.md
-│   └── _users.json
-├── linear/
-│   ├── issues/{team-key}/{TEAM-123}.md
-│   ├── projects/{slug}.md
-│   ├── attachments/{TEAM-123}/{filename}
-│   └── _meta/{teams,users,labels,workflow-states,cycles}.json
-├── gmail/
-│   ├── messages/{msg-id}.md
-│   ├── messages/{msg-id}.meta.json
-│   ├── threads/{thread-id}.md
-│   ├── attachments/{msg-id}/{filename}
-│   └── _labels.json
-└── gog/
-    ├── messages/{msg-id}.md
-    ├── messages/{msg-id}.meta.json
-    ├── threads/{thread-id}.md
-    ├── attachments/{msg-id}/{filename}
-    └── _meta/labels.json
-```
-
-## Sync Modes
-
-### Full Hydration (`--full`)
-
-Fetches all accessible data from the API. Use for the first run or to re-baseline.
-
-### Incremental Sync (default)
-
-Fetches only changes since the last sync. Each adapter uses the optimal change detection mechanism for its API:
-
-| Adapter | Mechanism | State Key |
-|---------|-----------|-----------|
-| Slack | Per-channel timestamp watermarks | `channelHighWaterMark` |
-| Notion | `last_edited_time` comparison | `pageLastEdited` |
-| Linear | `updatedAt` GraphQL filter | `lastSyncAt` |
-| Gmail | History API with `historyId` | `cursors.historyId` |
-| GOG | History API via `gog gmail history` | `metadata.historyId` |
-
-If state is missing or stale, adapters automatically fall back to full sync.
-
-## Scheduling with Cron
-
-Set up a cron job for regular incremental syncs:
-
-```bash
-# Every 15 minutes
-*/15 * * * * cd /path/to/saas-mirror && yarn sync >> /var/log/saas-mirror.log 2>&1
-
-# Every hour
-0 * * * * cd /path/to/saas-mirror && yarn sync >> /var/log/saas-mirror.log 2>&1
-
-# Nightly full sync (re-baseline weekly)
-0 2 * * 0 cd /path/to/saas-mirror && yarn sync:full >> /var/log/saas-mirror.log 2>&1
-```
-
-Or use `launchd` on macOS:
-
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>Label</key>
-    <string>com.saas-mirror.sync</string>
-    <key>ProgramArguments</key>
-    <array>
-        <string>/usr/local/bin/yarn</string>
-        <string>sync</string>
-    </array>
-    <key>WorkingDirectory</key>
-    <string>/path/to/saas-mirror</string>
-    <key>StartInterval</key>
-    <integer>900</integer>
-    <key>StandardOutPath</key>
-    <string>/var/log/saas-mirror.log</string>
-    <key>StandardErrorPath</key>
-    <string>/var/log/saas-mirror-error.log</string>
-</dict>
-</plist>
-```
-
-## Development
-
-```bash
-# Install dependencies
-yarn install
-
-# Run all tests
-yarn test
-
-# Type check
-yarn typecheck
-
-# Build (compile TypeScript)
-yarn build
-```
-
-### Architecture
-
-Each adapter implements the `Adapter` interface from `@saas-mirror/core`:
+Each adapter implements a single interface:
 
 ```typescript
 interface Adapter {
@@ -279,71 +71,216 @@ interface Adapter {
 }
 ```
 
-The `SyncContext` provides:
-- `mode` — `"full"` or `"incremental"`
-- `outputDir` — adapter-specific output directory
-- `state` — persistent state with `checkpoint()` for crash resumability
-- `rateLimiter` — pre-configured rate limiter for the adapter's API
-- `logger` — structured logger
-- `signal` — `AbortSignal` for graceful shutdown (Ctrl+C)
+The `SyncContext` provides everything an adapter needs: sync mode, output directory, persistent state with `checkpoint()`, a pre-configured rate limiter, structured logger, and an `AbortSignal` for graceful shutdown.
 
-### Error Handling
+## Project Structure
 
-- **Per-entity isolation**: one entity failure never aborts the sync
-- **Automatic retry**: transient errors (5xx, ECONNRESET, timeouts) retried with exponential backoff
-- **Rate limit handling**: 429 responses trigger backoff via the rate limiter
-- **Checkpoint resumability**: state persisted after each batch; interrupted syncs resume from last checkpoint
+```
+packages/
+  core/             Shared types, sync engine, rate limiter, state manager,
+                    output writer, retry, slugify, logger, CLI
+adapters/
+  slack/            Slack Conversations API
+  notion/           Notion Search + Blocks API
+  linear/           Linear GraphQL API
+  gmail/            Gmail REST API (OAuth2)
+  gog/              Gmail via gog CLI (OAuth handled by keyring)
+scheduling/         launchd plist + sync script for automated runs
+data/               Local output directory (gitignored)
+```
+
+## CLI
+
+```bash
+# Sync all configured adapters (incremental)
+yarn sync
+
+# Full hydration
+yarn sync:full
+
+# Sync a specific adapter
+yarn sync -- --adapter slack
+
+# Check sync status
+yarn sync -- status
+
+# List available adapters (based on configured env vars)
+yarn sync -- adapters
+
+# Daemon mode (continuous sync every N minutes)
+yarn daemon
+```
+
+## Configuration
+
+Copy `.env.example` to `.env.local` and fill in credentials for the services you want to sync. Only adapters with configured credentials will run.
+
+### Slack
+
+| Variable | Description |
+|----------|-------------|
+| `SLACK_BOT_TOKEN` | Bot token (`xoxb-...`) or user token (`xoxp-...`) with `channels:history`, `channels:read`, `users:read` scopes |
+| `SLACK_SKIP_DMS` | Skip DMs and group DMs (default: `false`) |
+| `SLACK_SKIP_FILES` | Skip file downloads (default: `false`) |
+
+### Notion
+
+| Variable | Description |
+|----------|-------------|
+| `NOTION_TOKEN` | Internal integration token (`ntn_...`) with access to target pages/databases |
+
+### Linear
+
+| Variable | Description |
+|----------|-------------|
+| `LINEAR_API_KEY` | Personal API key (`lin_api_...`) from Linear Settings > API |
+| `LINEAR_TEAM_KEYS` | Comma-separated team keys to sync (e.g., `ENG,PROD`). Omit to sync all. |
+| `LINEAR_INCLUDE_ARCHIVED` | Include archived issues (default: `true`) |
+| `LINEAR_DOWNLOAD_ATTACHMENTS` | Download file attachments (default: `true`) |
+
+### Gmail (OAuth2)
+
+| Variable | Description |
+|----------|-------------|
+| `GMAIL_CLIENT_ID` | OAuth2 client ID from Google Cloud Console |
+| `GMAIL_CLIENT_SECRET` | OAuth2 client secret |
+| `GMAIL_REFRESH_TOKEN` | OAuth2 refresh token |
+| `GMAIL_MAX_ATTACHMENT_MB` | Max attachment size in MB (default: `25`) |
+| `GMAIL_INCLUDE_SPAM_TRASH` | Include spam/trash (default: `false`) |
+| `GMAIL_INCLUDE_DRAFTS` | Include drafts (default: `false`) |
+| `GMAIL_BATCH_SIZE` | Messages per page (default: `500`, max: `500`) |
+| `GMAIL_CONCURRENCY` | Parallel message fetches (default: `2`) |
+
+### GOG (Gmail via `gog` CLI)
+
+Uses the `gog` CLI to access Gmail. OAuth is handled by `gog`'s own keyring — no raw credentials needed.
+
+| Variable | Description |
+|----------|-------------|
+| `GOG_ACCOUNT` | Gmail account email. Required to enable the adapter. |
+| `GOG_PATH` | Path to `gog` binary (default: `gog` on PATH) |
+
+Prerequisites: `gog` must be installed and authenticated (`gog auth login`).
+
+## Output Format
+
+Every adapter produces Markdown with YAML frontmatter:
+
+```markdown
+---
+source: slack
+type: message
+id: "C01234"
+title: "general"
+date: "2026-01-15T10:30:00Z"
+---
+
+# general
+
+**alice** (10:30 AM):
+Hey team, the deploy went well.
+```
+
+Each document has a companion JSON sidecar (`_meta.json`) with full structured metadata.
+
+### Directory Layout
+
+```
+data/
+├── slack/
+│   ├── channels/{channel-slug}/messages.md
+│   ├── threads/{channel-slug}/{thread-ts}.md
+│   └── _meta/{users,channels}.json
+├── notion/
+│   ├── {page-slug}/index.md
+│   └── {db-slug}/rows/{row-slug}.md
+├── linear/
+│   ├── issues/{team-key}/{TEAM-123}.md
+│   └── _meta/{teams,users,labels}.json
+├── gmail/
+│   ├── messages/{msg-id}.md
+│   ├── threads/{thread-id}.md
+│   └── attachments/{msg-id}/{filename}
+└── gog/
+    └── (same structure as gmail)
+```
+
+## Sync Modes
+
+### Full (`--full`)
+
+Fetches all accessible data. Use for the first run or to re-baseline.
+
+### Incremental (default)
+
+Fetches only changes since last sync. Each adapter uses the optimal change detection for its API:
+
+| Adapter | Mechanism |
+|---------|-----------|
+| Slack | Per-channel timestamp watermarks |
+| Notion | `last_edited_time` comparison |
+| Linear | `updatedAt` GraphQL filter |
+| Gmail | History API (`historyId`) |
+| GOG | History API via `gog gmail history` |
+
+If state is missing or expired, adapters automatically fall back to full sync.
+
+## Scheduling
+
+saas-mirror is a batch tool — it syncs and exits. Scheduling is handled externally.
+
+### Cron
+
+```bash
+# Incremental every 15 minutes
+*/15 * * * * cd /path/to/saas-mirror && yarn sync >> /var/log/saas-mirror.log 2>&1
+
+# Weekly full re-baseline
+0 2 * * 0 cd /path/to/saas-mirror && yarn sync:full >> /var/log/saas-mirror.log 2>&1
+```
+
+### macOS launchd
+
+A sample plist is provided at `scheduling/com.saas-mirror.sync.plist`:
+
+```bash
+# Install
+ln -sf /path/to/saas-mirror/scheduling/com.saas-mirror.sync.plist ~/Library/LaunchAgents/
+launchctl load ~/Library/LaunchAgents/com.saas-mirror.sync.plist
+
+# Verify
+launchctl list | grep saas-mirror
+
+# Uninstall
+launchctl unload ~/Library/LaunchAgents/com.saas-mirror.sync.plist
+```
+
+The included `sync-and-index.sh` script chains sync with optional vector indexing when an embedding server is available.
+
+## Adding a New Adapter
+
+1. Create `adapters/<name>/` with `package.json`, `tsconfig.json`, `vitest.config.ts`
+2. Implement the `Adapter` interface from `@saas-mirror/core`
+3. Register in `packages/core/src/engine.ts`
+4. Add env vars to `.env.example`
+5. Add build/typecheck entries to root `package.json` scripts
+
+See any existing adapter for the full pattern: API client, types, writer, tests.
+
+## Development
+
+```bash
+yarn install          # Install dependencies
+yarn build            # Compile TypeScript
+yarn typecheck        # Type check all packages
+yarn test             # Run all tests
+```
 
 ## Requirements
 
 - Node.js >= 20
-- Yarn 4.x (Corepack)
+- Yarn 4.x (via Corepack)
 
-## Scheduling (Automated Sync + Index)
+## License
 
-saas-mirror is a batch tool — it syncs and exits. Scheduling is handled externally via macOS **launchd**, keeping the project simple.
-
-### How It Works
-
-The `scheduling/` directory contains:
-- **`sync-and-index.sh`** — Chains sync → index. Syncs all adapters, then incrementally re-indexes changed files into the [retrieval-skill](https://github.com/c-h-/retrieval-skill) vector store. Skips indexing if the embedding server isn't running.
-- **`com.kindo.saas-mirror.plist`** — launchd job definition. Runs `sync-and-index.sh` every 30 minutes.
-
-### Setup
-
-```bash
-# Symlink the plist and load it
-ln -sf ~/personal/saas-mirror/scheduling/com.kindo.saas-mirror.plist ~/Library/LaunchAgents/
-launchctl load ~/Library/LaunchAgents/com.kindo.saas-mirror.plist
-
-# Verify it's loaded
-launchctl list | grep saas-mirror
-```
-
-### Monitoring
-
-```bash
-# Check if running
-launchctl list | grep saas-mirror
-
-# View logs
-tail -f /tmp/saas-mirror.log
-
-# Manual run
-bash scheduling/sync-and-index.sh
-```
-
-### Teardown
-
-```bash
-launchctl unload ~/Library/LaunchAgents/com.kindo.saas-mirror.plist
-rm ~/Library/LaunchAgents/com.kindo.saas-mirror.plist
-```
-
-### Design Rationale
-
-Why launchd and not a built-in daemon?
-- **Separation of concerns**: saas-mirror syncs data. Period. Scheduling is the OS's job.
-- **Reliability**: launchd runs whether or not any application framework is up.
-- **Simplicity**: No daemon mode, no PID management, no watchdog logic in the project.
-- **Observability**: An [OpenClaw](https://openclaw.ai) nightly health check verifies data freshness and index health, providing the "smart layer" on top of the dumb pipe.
+[MIT](LICENSE)
