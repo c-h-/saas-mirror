@@ -1,19 +1,19 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
-  resolveMentions,
-  mrkdwnToMarkdown,
-  formatTimestamp,
   formatDate,
   formatTime,
-  isSystemMessage,
+  formatTimestamp,
   getAuthorName,
+  isSystemMessage,
+  mrkdwnToMarkdown,
+  resolveMentions,
 } from "../transform.js";
 import type {
-  SlackUser,
-  SlackMessage,
-  SlackChannel,
-  UserMap,
   ChannelMap,
+  SlackChannel,
+  SlackMessage,
+  SlackUser,
+  UserMap,
 } from "../types.js";
 
 // ─── Helpers ───
@@ -72,7 +72,12 @@ function makeChannelMap(...channels: SlackChannel[]): ChannelMap {
 
 describe("resolveMentions", () => {
   const user1 = makeUser({ id: "U001", name: "alice", displayName: "Alice" });
-  const user2 = makeUser({ id: "U002", name: "bob", displayName: "Bob", realName: "Bob Smith" });
+  const user2 = makeUser({
+    id: "U002",
+    name: "bob",
+    displayName: "Bob",
+    realName: "Bob Smith",
+  });
   const userMap = makeUserMap(user1, user2);
 
   const channel1 = makeChannel({ id: "C001", name: "general" });
@@ -86,12 +91,20 @@ describe("resolveMentions", () => {
     });
 
     it("resolves multiple user mentions", () => {
-      const result = resolveMentions("<@U001> and <@U002> are here", userMap, channelMap);
+      const result = resolveMentions(
+        "<@U001> and <@U002> are here",
+        userMap,
+        channelMap,
+      );
       expect(result).toBe("@Alice and @Bob are here");
     });
 
     it("preserves display override when provided in mention", () => {
-      const result = resolveMentions("cc <@U001|custom_name>", userMap, channelMap);
+      const result = resolveMentions(
+        "cc <@U001|custom_name>",
+        userMap,
+        channelMap,
+      );
       expect(result).toBe("cc @custom_name");
     });
 
@@ -101,7 +114,11 @@ describe("resolveMentions", () => {
     });
 
     it("resolves user with displayName empty, falls back to name", () => {
-      const userNoDisplay = makeUser({ id: "U003", name: "charlie", displayName: "" });
+      const userNoDisplay = makeUser({
+        id: "U003",
+        name: "charlie",
+        displayName: "",
+      });
       const map = makeUserMap(userNoDisplay);
       const result = resolveMentions("Hey <@U003>", map, channelMap);
       expect(result).toBe("Hey @charlie");
@@ -110,7 +127,11 @@ describe("resolveMentions", () => {
 
   describe("channel mentions", () => {
     it("resolves channel mention with display label", () => {
-      const result = resolveMentions("See <#C001|general>", userMap, channelMap);
+      const result = resolveMentions(
+        "See <#C001|general>",
+        userMap,
+        channelMap,
+      );
       expect(result).toBe("See #general");
     });
 
@@ -125,14 +146,22 @@ describe("resolveMentions", () => {
     });
 
     it("resolves multiple channel mentions", () => {
-      const result = resolveMentions("<#C001|general> and <#C002|random>", userMap, channelMap);
+      const result = resolveMentions(
+        "<#C001|general> and <#C002|random>",
+        userMap,
+        channelMap,
+      );
       expect(result).toBe("#general and #random");
     });
   });
 
   describe("URL resolution", () => {
     it("resolves a plain URL", () => {
-      const result = resolveMentions("Visit <https://example.com>", userMap, channelMap);
+      const result = resolveMentions(
+        "Visit <https://example.com>",
+        userMap,
+        channelMap,
+      );
       expect(result).toBe("Visit https://example.com");
     });
 
@@ -146,7 +175,11 @@ describe("resolveMentions", () => {
     });
 
     it("resolves http URLs (not just https)", () => {
-      const result = resolveMentions("Go to <http://legacy.local>", userMap, channelMap);
+      const result = resolveMentions(
+        "Go to <http://legacy.local>",
+        userMap,
+        channelMap,
+      );
       expect(result).toBe("Go to http://legacy.local");
     });
 
@@ -187,12 +220,20 @@ describe("resolveMentions", () => {
     });
 
     it("resolves <!channel>", () => {
-      const result = resolveMentions("<!channel> important", userMap, channelMap);
+      const result = resolveMentions(
+        "<!channel> important",
+        userMap,
+        channelMap,
+      );
       expect(result).toBe("@channel important");
     });
 
     it("resolves <!everyone>", () => {
-      const result = resolveMentions("<!everyone> meeting now", userMap, channelMap);
+      const result = resolveMentions(
+        "<!everyone> meeting now",
+        userMap,
+        channelMap,
+      );
       expect(result).toBe("@everyone meeting now");
     });
 
@@ -206,16 +247,23 @@ describe("resolveMentions", () => {
     });
 
     it("resolves subteam mention without label", () => {
-      const result = resolveMentions("Hey <!subteam^S12345>", userMap, channelMap);
+      const result = resolveMentions(
+        "Hey <!subteam^S12345>",
+        userMap,
+        channelMap,
+      );
       expect(result).toBe("Hey @group");
     });
   });
 
   describe("mixed content", () => {
     it("resolves a message with mixed mention types", () => {
-      const text = "<@U001> posted in <#C001|general>: check <https://example.com|this> <!here>";
+      const text =
+        "<@U001> posted in <#C001|general>: check <https://example.com|this> <!here>";
       const result = resolveMentions(text, userMap, channelMap);
-      expect(result).toBe("@Alice posted in #general: check [this](https://example.com) @here");
+      expect(result).toBe(
+        "@Alice posted in #general: check [this](https://example.com) @here",
+      );
     });
 
     it("handles empty text", () => {
@@ -224,7 +272,11 @@ describe("resolveMentions", () => {
     });
 
     it("handles text with no mentions", () => {
-      const result = resolveMentions("Just a plain message", userMap, channelMap);
+      const result = resolveMentions(
+        "Just a plain message",
+        userMap,
+        channelMap,
+      );
       expect(result).toBe("Just a plain message");
     });
   });
@@ -234,27 +286,39 @@ describe("resolveMentions", () => {
 
 describe("mrkdwnToMarkdown", () => {
   it("converts single-asterisk bold to double-asterisk bold", () => {
-    expect(mrkdwnToMarkdown("this is *bold* text")).toBe("this is **bold** text");
+    expect(mrkdwnToMarkdown("this is *bold* text")).toBe(
+      "this is **bold** text",
+    );
   });
 
   it("converts tilde strikethrough to double-tilde", () => {
-    expect(mrkdwnToMarkdown("this is ~struck~ text")).toBe("this is ~~struck~~ text");
+    expect(mrkdwnToMarkdown("this is ~struck~ text")).toBe(
+      "this is ~~struck~~ text",
+    );
   });
 
   it("preserves italic underscores (same in both formats)", () => {
-    expect(mrkdwnToMarkdown("this is _italic_ text")).toBe("this is _italic_ text");
+    expect(mrkdwnToMarkdown("this is _italic_ text")).toBe(
+      "this is _italic_ text",
+    );
   });
 
   it("converts bold and strikethrough in the same string", () => {
-    expect(mrkdwnToMarkdown("*bold* and ~strike~")).toBe("**bold** and ~~strike~~");
+    expect(mrkdwnToMarkdown("*bold* and ~strike~")).toBe(
+      "**bold** and ~~strike~~",
+    );
   });
 
   it("does not double-convert already-doubled asterisks", () => {
-    expect(mrkdwnToMarkdown("already **bold** text")).toBe("already **bold** text");
+    expect(mrkdwnToMarkdown("already **bold** text")).toBe(
+      "already **bold** text",
+    );
   });
 
   it("does not double-convert already-doubled tildes", () => {
-    expect(mrkdwnToMarkdown("already ~~struck~~ text")).toBe("already ~~struck~~ text");
+    expect(mrkdwnToMarkdown("already ~~struck~~ text")).toBe(
+      "already ~~struck~~ text",
+    );
   });
 
   it("handles multiple bold sections", () => {
@@ -281,7 +345,9 @@ describe("mrkdwnToMarkdown", () => {
   });
 
   it("handles plain text with no formatting", () => {
-    expect(mrkdwnToMarkdown("just some plain text")).toBe("just some plain text");
+    expect(mrkdwnToMarkdown("just some plain text")).toBe(
+      "just some plain text",
+    );
   });
 });
 
@@ -366,31 +432,45 @@ describe("formatTime", () => {
 
 describe("isSystemMessage", () => {
   it("returns true for channel_join", () => {
-    expect(isSystemMessage(makeMessage({ subtype: "channel_join" }))).toBe(true);
+    expect(isSystemMessage(makeMessage({ subtype: "channel_join" }))).toBe(
+      true,
+    );
   });
 
   it("returns true for channel_leave", () => {
-    expect(isSystemMessage(makeMessage({ subtype: "channel_leave" }))).toBe(true);
+    expect(isSystemMessage(makeMessage({ subtype: "channel_leave" }))).toBe(
+      true,
+    );
   });
 
   it("returns true for channel_topic", () => {
-    expect(isSystemMessage(makeMessage({ subtype: "channel_topic" }))).toBe(true);
+    expect(isSystemMessage(makeMessage({ subtype: "channel_topic" }))).toBe(
+      true,
+    );
   });
 
   it("returns true for channel_purpose", () => {
-    expect(isSystemMessage(makeMessage({ subtype: "channel_purpose" }))).toBe(true);
+    expect(isSystemMessage(makeMessage({ subtype: "channel_purpose" }))).toBe(
+      true,
+    );
   });
 
   it("returns true for channel_name", () => {
-    expect(isSystemMessage(makeMessage({ subtype: "channel_name" }))).toBe(true);
+    expect(isSystemMessage(makeMessage({ subtype: "channel_name" }))).toBe(
+      true,
+    );
   });
 
   it("returns true for channel_archive", () => {
-    expect(isSystemMessage(makeMessage({ subtype: "channel_archive" }))).toBe(true);
+    expect(isSystemMessage(makeMessage({ subtype: "channel_archive" }))).toBe(
+      true,
+    );
   });
 
   it("returns true for channel_unarchive", () => {
-    expect(isSystemMessage(makeMessage({ subtype: "channel_unarchive" }))).toBe(true);
+    expect(isSystemMessage(makeMessage({ subtype: "channel_unarchive" }))).toBe(
+      true,
+    );
   });
 
   it("returns true for pinned_item", () => {
@@ -398,7 +478,9 @@ describe("isSystemMessage", () => {
   });
 
   it("returns true for unpinned_item", () => {
-    expect(isSystemMessage(makeMessage({ subtype: "unpinned_item" }))).toBe(true);
+    expect(isSystemMessage(makeMessage({ subtype: "unpinned_item" }))).toBe(
+      true,
+    );
   });
 
   it("returns true for group_join", () => {
@@ -414,7 +496,9 @@ describe("isSystemMessage", () => {
   });
 
   it("returns true for group_purpose", () => {
-    expect(isSystemMessage(makeMessage({ subtype: "group_purpose" }))).toBe(true);
+    expect(isSystemMessage(makeMessage({ subtype: "group_purpose" }))).toBe(
+      true,
+    );
   });
 
   it("returns true for group_name", () => {
@@ -422,11 +506,15 @@ describe("isSystemMessage", () => {
   });
 
   it("returns true for group_archive", () => {
-    expect(isSystemMessage(makeMessage({ subtype: "group_archive" }))).toBe(true);
+    expect(isSystemMessage(makeMessage({ subtype: "group_archive" }))).toBe(
+      true,
+    );
   });
 
   it("returns true for group_unarchive", () => {
-    expect(isSystemMessage(makeMessage({ subtype: "group_unarchive" }))).toBe(true);
+    expect(isSystemMessage(makeMessage({ subtype: "group_unarchive" }))).toBe(
+      true,
+    );
   });
 
   it("returns false for a regular message with no subtype", () => {
@@ -438,11 +526,15 @@ describe("isSystemMessage", () => {
   });
 
   it("returns false for subtype=bot_message", () => {
-    expect(isSystemMessage(makeMessage({ subtype: "bot_message" }))).toBe(false);
+    expect(isSystemMessage(makeMessage({ subtype: "bot_message" }))).toBe(
+      false,
+    );
   });
 
   it("returns false for subtype=message_deleted", () => {
-    expect(isSystemMessage(makeMessage({ subtype: "message_deleted" }))).toBe(false);
+    expect(isSystemMessage(makeMessage({ subtype: "message_deleted" }))).toBe(
+      false,
+    );
   });
 
   it("returns false for subtype=file_share", () => {
@@ -460,13 +552,24 @@ describe("getAuthorName", () => {
   });
 
   it("falls back to realName when displayName is empty", () => {
-    const user = makeUser({ id: "U001", displayName: "", realName: "Alice Real" });
+    const user = makeUser({
+      id: "U001",
+      displayName: "",
+      realName: "Alice Real",
+    });
     const map = makeUserMap(user);
-    expect(getAuthorName(makeMessage({ userId: "U001" }), map)).toBe("Alice Real");
+    expect(getAuthorName(makeMessage({ userId: "U001" }), map)).toBe(
+      "Alice Real",
+    );
   });
 
   it("falls back to name when both displayName and realName are empty", () => {
-    const user = makeUser({ id: "U001", displayName: "", realName: "", name: "alice" });
+    const user = makeUser({
+      id: "U001",
+      displayName: "",
+      realName: "",
+      name: "alice",
+    });
     const map = makeUserMap(user);
     expect(getAuthorName(makeMessage({ userId: "U001" }), map)).toBe("alice");
   });
@@ -479,13 +582,21 @@ describe("getAuthorName", () => {
 
   it("returns bot:botId when user and username not available, but botId is", () => {
     const map = makeUserMap();
-    const msg = makeMessage({ userId: "", username: undefined, botId: "B12345" });
+    const msg = makeMessage({
+      userId: "",
+      username: undefined,
+      botId: "B12345",
+    });
     expect(getAuthorName(msg, map)).toBe("bot:B12345");
   });
 
   it("returns 'unknown' when no identifiers are available", () => {
     const map = makeUserMap();
-    const msg = makeMessage({ userId: "", username: undefined, botId: undefined });
+    const msg = makeMessage({
+      userId: "",
+      username: undefined,
+      botId: undefined,
+    });
     expect(getAuthorName(msg, map)).toBe("unknown");
   });
 

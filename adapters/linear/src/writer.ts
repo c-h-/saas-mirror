@@ -3,58 +3,78 @@
  * Converts Linear records into markdown documents and JSON metadata files.
  */
 
-import type { OutputWriter, Logger } from "@saas-mirror/core";
+import type { Logger, OutputWriter } from "@saas-mirror/core";
 import { sanitizeFilename } from "@saas-mirror/core";
 import type {
+  CycleRecord,
   IssueRecord,
+  LabelRecord,
+  LookupMaps,
   ProjectRecord,
   TeamRecord,
   UserRecord,
-  LabelRecord,
   WorkflowStateRecord,
-  CycleRecord,
-  LookupMaps,
 } from "./types.js";
 import { PRIORITY_LABELS } from "./types.js";
 
 export class LinearWriter {
   private readonly writer: OutputWriter;
-  private readonly logger: Logger;
 
-  constructor(writer: OutputWriter, logger: Logger) {
+  constructor(writer: OutputWriter, _logger: Logger) {
     this.writer = writer;
-    this.logger = logger;
   }
 
   // ─── Meta files ───
 
   async writeTeams(teams: TeamRecord[]): Promise<void> {
-    await this.writer.writeMeta("_meta/teams.json", teams as unknown as Record<string, unknown>);
+    await this.writer.writeMeta(
+      "_meta/teams.json",
+      teams as unknown as Record<string, unknown>,
+    );
   }
 
   async writeUsers(users: UserRecord[]): Promise<void> {
-    await this.writer.writeMeta("_meta/users.json", users as unknown as Record<string, unknown>);
+    await this.writer.writeMeta(
+      "_meta/users.json",
+      users as unknown as Record<string, unknown>,
+    );
   }
 
   async writeLabels(labels: LabelRecord[]): Promise<void> {
-    await this.writer.writeMeta("_meta/labels.json", labels as unknown as Record<string, unknown>);
+    await this.writer.writeMeta(
+      "_meta/labels.json",
+      labels as unknown as Record<string, unknown>,
+    );
   }
 
   async writeWorkflowStates(states: WorkflowStateRecord[]): Promise<void> {
-    await this.writer.writeMeta("_meta/workflow-states.json", states as unknown as Record<string, unknown>);
+    await this.writer.writeMeta(
+      "_meta/workflow-states.json",
+      states as unknown as Record<string, unknown>,
+    );
   }
 
   async writeCycles(cycles: CycleRecord[]): Promise<void> {
-    await this.writer.writeMeta("_meta/cycles.json", cycles as unknown as Record<string, unknown>);
+    await this.writer.writeMeta(
+      "_meta/cycles.json",
+      cycles as unknown as Record<string, unknown>,
+    );
   }
 
   // ─── Project files ───
 
-  async writeProject(project: ProjectRecord, lookups: LookupMaps): Promise<void> {
-    const slug = project.slug || sanitizeFilename(project.name.toLowerCase().replace(/\s+/g, "-"));
+  async writeProject(
+    project: ProjectRecord,
+    lookups: LookupMaps,
+  ): Promise<void> {
+    const slug =
+      project.slug ||
+      sanitizeFilename(project.name.toLowerCase().replace(/\s+/g, "-"));
     const relativePath = `projects/${slug}.md`;
 
-    const leadName = project.leadId ? lookups.users.get(project.leadId)?.displayName : undefined;
+    const leadName = project.leadId
+      ? lookups.users.get(project.leadId)?.displayName
+      : undefined;
     const teamNames = project.teamIds
       .map((id) => lookups.teams.get(id)?.name)
       .filter(Boolean);
@@ -77,7 +97,11 @@ export class LinearWriter {
 
   // ─── Issue files ───
 
-  async writeIssue(issue: IssueRecord, teamKey: string, lookups: LookupMaps): Promise<void> {
+  async writeIssue(
+    issue: IssueRecord,
+    teamKey: string,
+    lookups: LookupMaps,
+  ): Promise<void> {
     const relativePath = `issues/${teamKey}/${issue.identifier}.md`;
 
     const frontmatter = this.buildIssueFrontmatter(issue, lookups);
@@ -86,7 +110,10 @@ export class LinearWriter {
     await this.writer.writeDocument(relativePath, frontmatter, body);
   }
 
-  private buildIssueFrontmatter(issue: IssueRecord, lookups: LookupMaps): Record<string, unknown> {
+  private buildIssueFrontmatter(
+    issue: IssueRecord,
+    lookups: LookupMaps,
+  ): Record<string, unknown> {
     const assigneeName = issue.assigneeId
       ? lookups.users.get(issue.assigneeId)?.displayName
       : undefined;
@@ -172,7 +199,7 @@ export class LinearWriter {
 
       for (const comment of issue.comments) {
         const userName = comment.userId
-          ? lookups.users.get(comment.userId)?.displayName ?? "Unknown"
+          ? (lookups.users.get(comment.userId)?.displayName ?? "Unknown")
           : "Unknown";
         parts.push("");
         parts.push(`### ${userName} --- ${comment.createdAt}`);

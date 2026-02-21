@@ -47,7 +47,7 @@ export async function withRetry<T>(
         throw err;
       }
       // Exponential backoff with jitter
-      const delay = Math.min(baseDelay * Math.pow(2, attempt), maxDelay);
+      const delay = Math.min(baseDelay * 2 ** attempt, maxDelay);
       const jitter = delay * 0.1 * Math.random();
       await sleep(delay + jitter);
     }

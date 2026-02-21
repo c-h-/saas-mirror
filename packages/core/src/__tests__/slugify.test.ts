@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { slugify, uniqueSlug, sanitizeFilename } from "../slugify.js";
+import { describe, expect, it } from "vitest";
+import { sanitizeFilename, slugify, uniqueSlug } from "../slugify.js";
 
 describe("slugify", () => {
   it("converts basic text to slug", () => {

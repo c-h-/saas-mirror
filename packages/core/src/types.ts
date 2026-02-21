@@ -77,10 +77,7 @@ export interface OutputWriter {
     frontmatter: Record<string, unknown>,
     body: string,
   ): Promise<void>;
-  writeMeta(
-    relativePath: string,
-    data: Record<string, unknown>,
-  ): Promise<void>;
+  writeMeta(relativePath: string, data: Record<string, unknown>): Promise<void>;
   writeJsonl(
     relativePath: string,
     records: Record<string, unknown>[],

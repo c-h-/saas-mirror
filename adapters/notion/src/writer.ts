@@ -7,23 +7,20 @@
  */
 
 import * as path from "node:path";
-import type { OutputWriter, Logger } from "@saas-mirror/core";
-import { uniqueSlug, sanitizeFilename } from "@saas-mirror/core";
+import type { Logger, OutputWriter } from "@saas-mirror/core";
 import type { NotionApi } from "./api.js";
-import type {
-  PageMeta,
-  DatabaseMeta,
-  DatabaseProperty,
-  NotionComment,
-  NotionUserInfo,
-  BlockTree,
-} from "./types.js";
 import {
+  type RenderContext,
   renderBlocks,
   renderPropertyValue,
-  extractPageTitle,
-  type RenderContext,
 } from "./renderer.js";
+import type {
+  BlockTree,
+  DatabaseMeta,
+  NotionComment,
+  NotionUserInfo,
+  PageMeta,
+} from "./types.js";
 
 // ─── File URL Helpers ───
 
@@ -85,11 +82,16 @@ export class NotionWriter {
     childPageSlugs: Map<string, string>;
     childDbSlugs: Map<string, string>;
   }): Promise<void> {
-    const { outputPath, meta, blocks, comments, childPageSlugs, childDbSlugs } = opts;
+    const { outputPath, meta, blocks, comments, childPageSlugs, childDbSlugs } =
+      opts;
     const assetsDir = path.posix.join(outputPath, "assets");
 
     // File URL resolver: downloads Notion-hosted files and returns local path
-    const resolveFileUrl = async (url: string, blockId: string, hint: string): Promise<string> => {
+    const resolveFileUrl = async (
+      url: string,
+      blockId: string,
+      hint: string,
+    ): Promise<string> => {
       const filename = assetFilename(blockId, url, hint);
       const assetPath = path.posix.join(assetsDir, filename);
       try {
@@ -98,7 +100,9 @@ export class NotionWriter {
         // Return path relative to the page directory
         return `./assets/${filename}`;
       } catch (err) {
-        this.logger.warn(`Failed to download asset ${filename}: ${String(err)}`);
+        this.logger.warn(
+          `Failed to download asset ${filename}: ${String(err)}`,
+        );
         return url; // Fall back to original URL
       }
     };
@@ -166,7 +170,11 @@ export class NotionWriter {
     const assetsDir = path.posix.join(path.posix.dirname(outputPath), "assets");
 
     // Resolve file URLs
-    const resolveFileUrl = async (url: string, blockId: string, hint: string): Promise<string> => {
+    const resolveFileUrl = async (
+      url: string,
+      blockId: string,
+      hint: string,
+    ): Promise<string> => {
       const filename = assetFilename(blockId, url, hint);
       const assetPath = path.posix.join(assetsDir, filename);
       try {
@@ -174,7 +182,9 @@ export class NotionWriter {
         await this.out.writeBinary(assetPath, buffer);
         return `./assets/${filename}`;
       } catch (err) {
-        this.logger.warn(`Failed to download asset ${filename}: ${String(err)}`);
+        this.logger.warn(
+          `Failed to download asset ${filename}: ${String(err)}`,
+        );
         return url;
       }
     };
@@ -202,7 +212,11 @@ export class NotionWriter {
       }
     }
 
-    await this.out.writeDocument(outputPath, frontmatter, `# ${meta.title}\n\n${markdown}`);
+    await this.out.writeDocument(
+      outputPath,
+      frontmatter,
+      `# ${meta.title}\n\n${markdown}`,
+    );
 
     // Write row _meta.json
     const metaPath = outputPath.replace(/\.md$/, "._meta.json");
@@ -245,9 +259,7 @@ export class NotionWriter {
 
   // ─── Write users cache ───
 
-  async writeUsers(
-    userCache: Record<string, NotionUserInfo>,
-  ): Promise<void> {
+  async writeUsers(userCache: Record<string, NotionUserInfo>): Promise<void> {
     await this.out.writeMeta("_users.json", userCache);
   }
 

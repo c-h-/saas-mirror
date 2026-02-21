@@ -14,25 +14,25 @@
 
 import type {
   Adapter,
-  SyncContext,
-  SyncResult,
-  SyncError,
   Logger,
   OutputWriter,
+  SyncContext,
+  SyncError,
+  SyncResult,
 } from "@saas-mirror/core";
-import { createOutputWriter, uniqueSlug, slugify } from "@saas-mirror/core";
+import { createOutputWriter, slugify, uniqueSlug } from "@saas-mirror/core";
 import { NotionApi } from "./api.js";
-import { NotionWriter } from "./writer.js";
-import { extractPageTitle, renderPropertyValue } from "./renderer.js";
+import { extractPageTitle } from "./renderer.js";
 import type {
+  DatabaseMeta,
+  DatabaseProperty,
+  NotionComment,
   NotionSyncMetadata,
   NotionUserInfo,
   PageMeta,
-  DatabaseMeta,
-  DatabaseProperty,
   PageTreeNode,
-  NotionComment,
 } from "./types.js";
+import { NotionWriter } from "./writer.js";
 
 // ─── Constants ───
 
@@ -76,7 +76,10 @@ function extractParent(parent: Record<string, unknown>): {
     case "page_id":
       return { parentId: parent.page_id as string, parentType: "page_id" };
     case "database_id":
-      return { parentId: parent.database_id as string, parentType: "database_id" };
+      return {
+        parentId: parent.database_id as string,
+        parentType: "database_id",
+      };
     case "block_id":
       return { parentId: parent.block_id as string, parentType: "block_id" };
     default:
@@ -87,7 +90,9 @@ function extractParent(parent: Record<string, unknown>): {
 /**
  * Build icon structure from Notion API icon.
  */
-function extractIcon(icon: Record<string, unknown> | null | undefined): PageMeta["icon"] | undefined {
+function extractIcon(
+  icon: Record<string, unknown> | null | undefined,
+): PageMeta["icon"] | undefined {
   if (!icon) return undefined;
   const type = icon.type as string;
   if (type === "emoji") {
@@ -107,7 +112,9 @@ function extractIcon(icon: Record<string, unknown> | null | undefined): PageMeta
 /**
  * Build cover structure from Notion API cover.
  */
-function extractCover(cover: Record<string, unknown> | null | undefined): PageMeta["cover"] | undefined {
+function extractCover(
+  cover: Record<string, unknown> | null | undefined,
+): PageMeta["cover"] | undefined {
   if (!cover) return undefined;
   const type = cover.type as string;
   if (type === "external") {
@@ -167,7 +174,14 @@ export class NotionAdapter implements Adapter {
         itemsSynced = result.synced;
         itemsFailed = result.failed;
       } else {
-        const result = await this.incrementalSync(ctx, api, out, writer, meta, errors);
+        const result = await this.incrementalSync(
+          ctx,
+          api,
+          out,
+          writer,
+          meta,
+          errors,
+        );
         itemsSynced = result.synced;
         itemsFailed = result.failed;
       }
@@ -249,12 +263,12 @@ export class NotionAdapter implements Adapter {
     }
 
     // Step 5: Process databases (that are workspace-level or not yet processed)
-    for (const [dbId, dbObj] of databases) {
+    for (const [_dbId, dbObj] of databases) {
       if (ctx.signal.aborted) break;
-      const parent = extractParent((dbObj as Record<string, unknown>).parent as Record<string, unknown>);
+      const parent = extractParent(
+        (dbObj as Record<string, unknown>).parent as Record<string, unknown>,
+      );
       if (parent.parentType === "workspace") {
-        // Already processed in tree walk
-        continue;
       }
       // Databases nested inside pages are handled during page processing
     }
@@ -330,11 +344,12 @@ export class NotionAdapter implements Adapter {
 
     // Step 2: Process changed pages
     // Build a full discovery for slug calculation
-    const { pages: allPages, databases: allDatabases } = await this.discoverFromSearchResults(
-      changedPages,
-      changedDatabases,
-      meta,
-    );
+    const { pages: allPages, databases: allDatabases } =
+      await this.discoverFromSearchResults(
+        changedPages,
+        changedDatabases,
+        meta,
+      );
     const tree = this.buildPageTree(allPages, allDatabases);
     const slugMap = this.buildSlugMap(tree);
 
@@ -400,8 +415,12 @@ export class NotionAdapter implements Adapter {
     }
 
     // Step 4: Deletion detection
-    const deletedPageIds = meta.knownPageIds.filter((id) => !currentIds.has(id));
-    const deletedDbIds = meta.knownDatabaseIds.filter((id) => !currentIds.has(id));
+    const deletedPageIds = meta.knownPageIds.filter(
+      (id) => !currentIds.has(id),
+    );
+    const deletedDbIds = meta.knownDatabaseIds.filter(
+      (id) => !currentIds.has(id),
+    );
 
     if (deletedPageIds.length > 0 || deletedDbIds.length > 0) {
       logger.info(
@@ -455,7 +474,7 @@ export class NotionAdapter implements Adapter {
 
   private async discover(
     api: NotionApi,
-    logger: Logger,
+    _logger: Logger,
   ): Promise<{
     pages: Map<string, Record<string, unknown>>;
     databases: Map<string, Record<string, unknown>>;
@@ -483,7 +502,7 @@ export class NotionAdapter implements Adapter {
   private async discoverFromSearchResults(
     changedPages: Map<string, Record<string, unknown>>,
     changedDatabases: Map<string, Record<string, unknown>>,
-    meta: NotionSyncMetadata,
+    _meta: NotionSyncMetadata,
   ): Promise<{
     pages: Map<string, Record<string, unknown>>;
     databases: Map<string, Record<string, unknown>>;
@@ -527,7 +546,8 @@ export class NotionAdapter implements Adapter {
     // Create nodes for databases
     for (const [id, obj] of databases) {
       const titleArr = (obj.title as Array<{ plain_text: string }>) ?? [];
-      const title = titleArr.map((t) => t.plain_text).join("") || "Untitled Database";
+      const title =
+        titleArr.map((t) => t.plain_text).join("") || "Untitled Database";
       const parent = extractParent(obj.parent as Record<string, unknown>);
       const slug = this.generateSlug(title, id, slugTracker);
 
@@ -601,11 +621,27 @@ export class NotionAdapter implements Adapter {
     try {
       if (node.objectType === "page") {
         // Find the original API object for this page
-        await this.syncSinglePageFromNode(node, ctx, api, out, writer, meta, slugMap);
+        await this.syncSinglePageFromNode(
+          node,
+          ctx,
+          api,
+          out,
+          writer,
+          meta,
+          slugMap,
+        );
         meta.pageLastEdited[node.id] = node.lastEditedTime;
         synced++;
       } else if (node.objectType === "database") {
-        await this.syncSingleDatabaseFromNode(node, ctx, api, out, writer, meta, slugMap);
+        await this.syncSingleDatabaseFromNode(
+          node,
+          ctx,
+          api,
+          out,
+          writer,
+          meta,
+          slugMap,
+        );
         meta.dbLastEdited[node.id] = node.lastEditedTime;
         synced++;
       }
@@ -617,7 +653,9 @@ export class NotionAdapter implements Adapter {
         error: msg,
         retryable: isRetryableError(err),
       });
-      ctx.logger.error(`Failed to sync ${node.objectType} "${node.title}" (${node.id}): ${msg}`);
+      ctx.logger.error(
+        `Failed to sync ${node.objectType} "${node.title}" (${node.id}): ${msg}`,
+      );
     }
 
     // Process children
@@ -652,9 +690,9 @@ export class NotionAdapter implements Adapter {
     node: PageTreeNode,
     ctx: SyncContext,
     api: NotionApi,
-    out: OutputWriter,
+    _out: OutputWriter,
     writer: NotionWriter,
-    meta: NotionSyncMetadata,
+    _meta: NotionSyncMetadata,
     slugMap: Map<string, string>,
   ): Promise<void> {
     const logger = ctx.logger;
@@ -704,9 +742,9 @@ export class NotionAdapter implements Adapter {
     pageObj: Record<string, unknown>,
     ctx: SyncContext,
     api: NotionApi,
-    out: OutputWriter,
+    _out: OutputWriter,
     writer: NotionWriter,
-    meta: NotionSyncMetadata,
+    _meta: NotionSyncMetadata,
     slugMap: Map<string, string>,
   ): Promise<void> {
     const logger = ctx.logger;
@@ -718,7 +756,9 @@ export class NotionAdapter implements Adapter {
       // Generate a path for this page
       const slug = uniqueSlug(pageMeta.title, pageId);
       const parent = extractParent(pageObj.parent as Record<string, unknown>);
-      const parentPath = parent.parentId ? slugMap.get(parent.parentId) : undefined;
+      const parentPath = parent.parentId
+        ? slugMap.get(parent.parentId)
+        : undefined;
       const fullPath = parentPath ? `${parentPath}/${slug}` : slug;
       slugMap.set(pageId, fullPath);
     }
@@ -765,10 +805,10 @@ export class NotionAdapter implements Adapter {
     node: PageTreeNode,
     ctx: SyncContext,
     api: NotionApi,
-    out: OutputWriter,
+    _out: OutputWriter,
     writer: NotionWriter,
     meta: NotionSyncMetadata,
-    slugMap: Map<string, string>,
+    _slugMap: Map<string, string>,
   ): Promise<void> {
     const logger = ctx.logger;
     logger.info(`Syncing database: "${node.title}" (${node.id})`);
@@ -824,14 +864,15 @@ export class NotionAdapter implements Adapter {
     dbObj: Record<string, unknown>,
     ctx: SyncContext,
     api: NotionApi,
-    out: OutputWriter,
+    _out: OutputWriter,
     writer: NotionWriter,
     meta: NotionSyncMetadata,
     slugMap: Map<string, string>,
   ): Promise<void> {
     const logger = ctx.logger;
     const titleArr = (dbObj.title as Array<{ plain_text: string }>) ?? [];
-    const title = titleArr.map((t) => t.plain_text).join("") || "Untitled Database";
+    const title =
+      titleArr.map((t) => t.plain_text).join("") || "Untitled Database";
     logger.info(`Syncing database: "${title}" (${dbId})`);
 
     // Determine output path
@@ -839,7 +880,9 @@ export class NotionAdapter implements Adapter {
     if (!outputPath) {
       const slug = uniqueSlug(title, dbId);
       const parent = extractParent(dbObj.parent as Record<string, unknown>);
-      const parentPath = parent.parentId ? slugMap.get(parent.parentId) : undefined;
+      const parentPath = parent.parentId
+        ? slugMap.get(parent.parentId)
+        : undefined;
       outputPath = parentPath ? `${parentPath}/${slug}` : slug;
       slugMap.set(dbId, outputPath);
     }
@@ -910,7 +953,9 @@ export class NotionAdapter implements Adapter {
       logger.info(`Cached ${Object.keys(meta.userCache).length} users`);
     } catch (err) {
       // Users endpoint may not be available with all integration permissions
-      logger.warn(`Could not fetch users: ${err instanceof Error ? err.message : String(err)}`);
+      logger.warn(
+        `Could not fetch users: ${err instanceof Error ? err.message : String(err)}`,
+      );
     }
   }
 
@@ -929,21 +974,26 @@ export class NotionAdapter implements Adapter {
         comments.push({
           id: c.id as string,
           createdTime: c.created_time as string,
-          createdBy: ((c.created_by as Record<string, unknown>)?.id as string) ?? "",
+          createdBy:
+            ((c.created_by as Record<string, unknown>)?.id as string) ?? "",
           richText: richText.map((rt) => ({
             type: (rt.type as "text" | "mention" | "equation") ?? "text",
             plain_text: (rt.plain_text as string) ?? "",
             href: (rt.href as string | null) ?? null,
-            annotations: (rt.annotations as NotionComment["richText"][number]["annotations"]) ?? {
-              bold: false,
-              italic: false,
-              strikethrough: false,
-              underline: false,
-              code: false,
-              color: "default",
-            },
+            annotations:
+              (rt.annotations as NotionComment["richText"][number]["annotations"]) ?? {
+                bold: false,
+                italic: false,
+                strikethrough: false,
+                underline: false,
+                code: false,
+                color: "default",
+              },
           })),
-          parentType: ((c.parent as Record<string, unknown>)?.type as "page_id" | "block_id") ?? "page_id",
+          parentType:
+            ((c.parent as Record<string, unknown>)?.type as
+              | "page_id"
+              | "block_id") ?? "page_id",
           parentId: pageId,
         });
       }
@@ -971,8 +1021,10 @@ export class NotionAdapter implements Adapter {
       parentType: parent.parentType,
       createdTime: (obj.created_time as string) ?? "",
       lastEditedTime: (obj.last_edited_time as string) ?? "",
-      createdBy: ((obj.created_by as Record<string, unknown>)?.id as string) ?? "",
-      lastEditedBy: ((obj.last_edited_by as Record<string, unknown>)?.id as string) ?? "",
+      createdBy:
+        ((obj.created_by as Record<string, unknown>)?.id as string) ?? "",
+      lastEditedBy:
+        ((obj.last_edited_by as Record<string, unknown>)?.id as string) ?? "",
       archived: (obj.archived as boolean) ?? false,
       icon: extractIcon(obj.icon as Record<string, unknown> | null),
       cover: extractCover(obj.cover as Record<string, unknown> | null),
@@ -982,9 +1034,11 @@ export class NotionAdapter implements Adapter {
 
   private buildDatabaseMeta(obj: Record<string, unknown>): DatabaseMeta {
     const titleArr = (obj.title as Array<{ plain_text: string }>) ?? [];
-    const title = titleArr.map((t) => t.plain_text).join("") || "Untitled Database";
+    const title =
+      titleArr.map((t) => t.plain_text).join("") || "Untitled Database";
     const parent = extractParent(obj.parent as Record<string, unknown>);
-    const rawProps = (obj.properties as Record<string, Record<string, unknown>>) ?? {};
+    const rawProps =
+      (obj.properties as Record<string, Record<string, unknown>>) ?? {};
 
     const properties: Record<string, DatabaseProperty> = {};
     for (const [name, prop] of Object.entries(rawProps)) {

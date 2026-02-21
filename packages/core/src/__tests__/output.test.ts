@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import * as fs from "node:fs";
-import * as path from "node:path";
 import * as os from "node:os";
+import * as path from "node:path";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { FileOutputWriter } from "../output.js";
 
 describe("FileOutputWriter", () => {
@@ -24,10 +24,7 @@ describe("FileOutputWriter", () => {
       "# Hello\n\nBody text here.",
     );
 
-    const content = fs.readFileSync(
-      path.join(tmpDir, "test/page.md"),
-      "utf-8",
-    );
+    const content = fs.readFileSync(path.join(tmpDir, "test/page.md"), "utf-8");
     expect(content).toContain("---");
     expect(content).toContain("title: Hello");
     expect(content).toContain("# Hello");
@@ -37,25 +34,16 @@ describe("FileOutputWriter", () => {
   it("writes JSON metadata", async () => {
     await writer.writeMeta("meta/info.json", { id: "123", count: 5 });
 
-    const raw = fs.readFileSync(
-      path.join(tmpDir, "meta/info.json"),
-      "utf-8",
-    );
+    const raw = fs.readFileSync(path.join(tmpDir, "meta/info.json"), "utf-8");
     const data = JSON.parse(raw);
     expect(data.id).toBe("123");
     expect(data.count).toBe(5);
   });
 
   it("writes JSONL", async () => {
-    await writer.writeJsonl("data.jsonl", [
-      { a: 1 },
-      { b: 2 },
-    ]);
+    await writer.writeJsonl("data.jsonl", [{ a: 1 }, { b: 2 }]);
 
-    const content = fs.readFileSync(
-      path.join(tmpDir, "data.jsonl"),
-      "utf-8",
-    );
+    const content = fs.readFileSync(path.join(tmpDir, "data.jsonl"), "utf-8");
     const lines = content.trim().split("\n");
     expect(lines).toHaveLength(2);
     expect(JSON.parse(lines[0])).toEqual({ a: 1 });
@@ -66,10 +54,7 @@ describe("FileOutputWriter", () => {
     await writer.writeJsonl("append.jsonl", [{ a: 1 }]);
     await writer.appendJsonl("append.jsonl", [{ b: 2 }]);
 
-    const content = fs.readFileSync(
-      path.join(tmpDir, "append.jsonl"),
-      "utf-8",
-    );
+    const content = fs.readFileSync(path.join(tmpDir, "append.jsonl"), "utf-8");
     const lines = content.trim().split("\n");
     expect(lines).toHaveLength(2);
   });
@@ -84,14 +69,10 @@ describe("FileOutputWriter", () => {
 
   it("removes files", async () => {
     await writer.writeMeta("to-delete.json", { x: 1 });
-    expect(
-      fs.existsSync(path.join(tmpDir, "to-delete.json")),
-    ).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, "to-delete.json"))).toBe(true);
 
     await writer.remove("to-delete.json");
-    expect(
-      fs.existsSync(path.join(tmpDir, "to-delete.json")),
-    ).toBe(false);
+    expect(fs.existsSync(path.join(tmpDir, "to-delete.json"))).toBe(false);
   });
 
   it("remove is idempotent for missing files", async () => {

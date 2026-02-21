@@ -7,23 +7,17 @@
 
 import { execFile } from "node:child_process";
 import type { Logger } from "@saas-mirror/core";
-import type {
-  GogLabel,
-  GogMessageSummary,
-  GogMessageFull,
-} from "./types.js";
+import type { GogLabel, GogMessageFull, GogMessageSummary } from "./types.js";
 
 const DEFAULT_GOG_PATH = "gog";
 
 export class GogCli {
   private readonly gogPath: string;
   private readonly account: string;
-  private readonly logger: Logger;
 
-  constructor(account: string, logger: Logger, gogPath?: string) {
+  constructor(account: string, _logger: Logger, gogPath?: string) {
     this.gogPath = gogPath ?? process.env.GOG_PATH ?? DEFAULT_GOG_PATH;
     this.account = account;
-    this.logger = logger;
   }
 
   // ─── Labels ───
@@ -41,7 +35,14 @@ export class GogCli {
     maxResults: number,
     pageToken?: string,
   ): Promise<{ messages: GogMessageSummary[]; nextPageToken?: string }> {
-    const args = ["gmail", "messages", "search", query, "--max", String(maxResults)];
+    const args = [
+      "gmail",
+      "messages",
+      "search",
+      query,
+      "--max",
+      String(maxResults),
+    ];
     if (pageToken) args.push("--page", pageToken);
 
     const result = await this.exec(args);
@@ -56,7 +57,11 @@ export class GogCli {
 
   async getMessage(messageId: string): Promise<GogMessageFull> {
     const result = await this.exec([
-      "gmail", "get", messageId, "--format", "full",
+      "gmail",
+      "get",
+      messageId,
+      "--format",
+      "full",
     ]);
     return JSON.parse(result);
   }
@@ -68,7 +73,10 @@ export class GogCli {
     attachmentId: string,
   ): Promise<Buffer> {
     const result = await this.execRaw([
-      "gmail", "attachment", messageId, attachmentId,
+      "gmail",
+      "attachment",
+      messageId,
+      attachmentId,
     ]);
     return result;
   }
@@ -79,11 +87,18 @@ export class GogCli {
     sinceHistoryId: string,
     maxResults = 100,
     pageToken?: string,
-  ): Promise<{ history: Array<Record<string, unknown>>; historyId: string; nextPageToken?: string }> {
+  ): Promise<{
+    history: Array<Record<string, unknown>>;
+    historyId: string;
+    nextPageToken?: string;
+  }> {
     const args = [
-      "gmail", "history",
-      "--since", sinceHistoryId,
-      "--max", String(maxResults),
+      "gmail",
+      "history",
+      "--since",
+      sinceHistoryId,
+      "--max",
+      String(maxResults),
     ];
     if (pageToken) args.push("--page", pageToken);
 
@@ -94,7 +109,13 @@ export class GogCli {
   // ─── Internal Execution ───
 
   private exec(subArgs: string[]): Promise<string> {
-    const args = [...subArgs, "--json", "--no-input", "--account", this.account];
+    const args = [
+      ...subArgs,
+      "--json",
+      "--no-input",
+      "--account",
+      this.account,
+    ];
     return new Promise((resolve, reject) => {
       execFile(
         this.gogPath,
@@ -103,7 +124,9 @@ export class GogCli {
         (err, stdout, stderr) => {
           if (err) {
             const msg = stderr?.trim() || err.message;
-            reject(new Error(`gog ${subArgs.slice(0, 3).join(" ")} failed: ${msg}`));
+            reject(
+              new Error(`gog ${subArgs.slice(0, 3).join(" ")} failed: ${msg}`),
+            );
             return;
           }
           resolve(stdout);
@@ -122,7 +145,9 @@ export class GogCli {
         (err, stdout, stderr) => {
           if (err) {
             const msg = stderr?.toString().trim() || err.message;
-            reject(new Error(`gog ${subArgs.slice(0, 3).join(" ")} failed: ${msg}`));
+            reject(
+              new Error(`gog ${subArgs.slice(0, 3).join(" ")} failed: ${msg}`),
+            );
             return;
           }
           resolve(stdout as unknown as Buffer);

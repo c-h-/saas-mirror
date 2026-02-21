@@ -9,25 +9,25 @@
  */
 
 import type { OutputWriter } from "@saas-mirror/core";
+import {
+  formatDate,
+  formatTime,
+  formatTimestamp,
+  getAuthorName,
+  getDateGroup,
+  isSystemMessage,
+  renderMessageText,
+  renderSystemMessage,
+} from "./transform.js";
 import type {
+  ChannelExportData,
+  ChannelMap,
+  JsonlRecord,
   SlackChannel,
   SlackMessage,
   SlackReaction,
   UserMap,
-  ChannelMap,
-  ChannelExportData,
-  JsonlRecord,
 } from "./types.js";
-import {
-  renderMessageText,
-  getAuthorName,
-  formatTime,
-  formatDate,
-  formatTimestamp,
-  getDateGroup,
-  isSystemMessage,
-  renderSystemMessage,
-} from "./transform.js";
 
 // ─── Channel Messages Writer ───
 
@@ -44,7 +44,15 @@ export async function writeChannelOutput(
   const basePath = `channels/${slug}`;
 
   // Write messages.md
-  await writeMessagesMd(writer, basePath, channel, messages, threads, userMap, channelMap);
+  await writeMessagesMd(
+    writer,
+    basePath,
+    channel,
+    messages,
+    threads,
+    userMap,
+    channelMap,
+  );
 
   // Write messages.jsonl
   await writeMessagesJsonl(writer, basePath, messages, userMap, channelMap);
@@ -53,7 +61,14 @@ export async function writeChannelOutput(
   await writeChannelMeta(writer, basePath, channel, messages);
 
   // Write thread documents
-  await writeThreadDocuments(writer, slug, channel, threads, userMap, channelMap);
+  await writeThreadDocuments(
+    writer,
+    slug,
+    channel,
+    threads,
+    userMap,
+    channelMap,
+  );
 }
 
 /**
@@ -70,9 +85,19 @@ export async function appendChannelOutput(
   if (messages.length > 0) {
     // For incremental, we rewrite messages.md with all messages (caller provides full set)
     // and append to jsonl
-    await writeMessagesMd(writer, basePath, channel, messages, threads, userMap, channelMap);
+    await writeMessagesMd(
+      writer,
+      basePath,
+      channel,
+      messages,
+      threads,
+      userMap,
+      channelMap,
+    );
 
-    const jsonlRecords = messages.map((msg) => buildJsonlRecord(msg, userMap, channelMap));
+    const jsonlRecords = messages.map((msg) =>
+      buildJsonlRecord(msg, userMap, channelMap),
+    );
     await writer.appendJsonl(
       `${basePath}/messages.jsonl`,
       jsonlRecords as unknown as Record<string, unknown>[],
@@ -83,7 +108,14 @@ export async function appendChannelOutput(
   }
 
   // Write/update thread documents
-  await writeThreadDocuments(writer, slug, channel, threads, userMap, channelMap);
+  await writeThreadDocuments(
+    writer,
+    slug,
+    channel,
+    threads,
+    userMap,
+    channelMap,
+  );
 }
 
 // ─── Messages Markdown ───
@@ -246,11 +278,14 @@ async function writeChannelMeta(
   channel: SlackChannel,
   messages: SlackMessage[],
 ): Promise<void> {
-  const nonDeletedMessages = messages.filter((m) => m.subtype !== "message_deleted");
-  const oldestTs = nonDeletedMessages.length > 0 ? nonDeletedMessages[0]!.ts : null;
+  const nonDeletedMessages = messages.filter(
+    (m) => m.subtype !== "message_deleted",
+  );
+  const oldestTs =
+    nonDeletedMessages.length > 0 ? nonDeletedMessages[0]?.ts : null;
   const newestTs =
     nonDeletedMessages.length > 0
-      ? nonDeletedMessages[nonDeletedMessages.length - 1]!.ts
+      ? nonDeletedMessages[nonDeletedMessages.length - 1]?.ts
       : null;
 
   const meta: Record<string, unknown> = {
@@ -283,8 +318,12 @@ async function writeThreadDocuments(
     if (replies.length === 0) continue;
 
     const parentMsg = replies[0];
-    const parentAuthor = parentMsg ? getAuthorName(parentMsg, userMap) : "unknown";
-    const parentText = parentMsg ? renderMessageText(parentMsg, userMap, channelMap) : "";
+    const parentAuthor = parentMsg
+      ? getAuthorName(parentMsg, userMap)
+      : "unknown";
+    const parentText = parentMsg
+      ? renderMessageText(parentMsg, userMap, channelMap)
+      : "";
 
     // Build participants list
     const participantIds = new Set<string>();

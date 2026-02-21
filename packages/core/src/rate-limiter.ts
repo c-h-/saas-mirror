@@ -118,8 +118,6 @@ export class TokenBucketRateLimiter implements RateLimiter {
   }
 }
 
-export function createRateLimiter(
-  config: RateLimiterConfig = {},
-): RateLimiter {
+export function createRateLimiter(config: RateLimiterConfig = {}): RateLimiter {
   return new TokenBucketRateLimiter(config);
 }

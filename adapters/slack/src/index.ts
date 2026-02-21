@@ -1,32 +1,32 @@
 export { SlackAdapter } from "./adapter.js";
 export { SlackApi } from "./api.js";
-export type {
-  SlackChannel,
-  SlackUser,
-  SlackMessage,
-  SlackReaction,
-  SlackFile,
-  SlackSyncMetadata,
-  SlackAuthInfo,
-  UserMap,
-  ChannelMap,
-  ChannelExportData,
-  JsonlRecord,
-} from "./types.js";
 export {
-  resolveMentions,
   blocksToText,
+  formatDate,
+  formatTime,
+  formatTimestamp,
+  getAuthorName,
+  isSystemMessage,
   mrkdwnToMarkdown,
   renderMessageText,
-  getAuthorName,
-  formatTimestamp,
-  formatTime,
-  formatDate,
-  isSystemMessage,
+  resolveMentions,
 } from "./transform.js";
+export type {
+  ChannelExportData,
+  ChannelMap,
+  JsonlRecord,
+  SlackAuthInfo,
+  SlackChannel,
+  SlackFile,
+  SlackMessage,
+  SlackReaction,
+  SlackSyncMetadata,
+  SlackUser,
+  UserMap,
+} from "./types.js";
 export {
-  writeChannelOutput,
   appendChannelOutput,
-  writeUsersIndex,
+  writeChannelOutput,
   writeChannelsIndex,
+  writeUsersIndex,
 } from "./writer.js";

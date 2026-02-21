@@ -59,7 +59,9 @@ function getCaption(content: Record<string, unknown>): NotionRichText[] {
   return (content.caption as NotionRichText[] | undefined) ?? [];
 }
 
-function getFileUrl(content: Record<string, unknown>): { url: string; isNotionHosted: boolean } | null {
+function getFileUrl(
+  content: Record<string, unknown>,
+): { url: string; isNotionHosted: boolean } | null {
   if (content.type === "file") {
     const file = content.file as { url: string } | undefined;
     if (file?.url) return { url: file.url, isNotionHosted: true };
@@ -93,7 +95,11 @@ export interface RenderContext {
    * Returns a local relative path to use in the Markdown.
    * If undefined, URLs are left as-is.
    */
-  resolveFileUrl?: (url: string, blockId: string, hint: string) => Promise<string>;
+  resolveFileUrl?: (
+    url: string,
+    blockId: string,
+    hint: string,
+  ) => Promise<string>;
   /**
    * Map of child_page block IDs to their slugs for link resolution.
    */
@@ -146,15 +152,16 @@ export async function renderBlocks(
 
     // Add blank line between blocks, unless both are same list type
     const isSameListType =
-      nextBlock &&
-      isListType(block.type) &&
-      block.type === nextBlock.type;
+      nextBlock && isListType(block.type) && block.type === nextBlock.type;
     if (!isSameListType && rendered.length > 0) {
       parts.push("");
     }
   }
 
-  return parts.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+  return parts
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 function isListType(type: string): boolean {
@@ -179,9 +186,11 @@ async function renderBlock(
     // ─── Text ───
     case "paragraph": {
       const text = renderRichText(getRichText(content));
-      const childrenMd = children.length > 0
-        ? "\n" + await renderBlocks(children, { ...ctx, indent: ctx.indent })
-        : "";
+      const childrenMd =
+        children.length > 0
+          ? "\n" +
+            (await renderBlocks(children, { ...ctx, indent: ctx.indent }))
+          : "";
       return `${indent}${text}${childrenMd}`;
     }
 
@@ -202,34 +211,41 @@ async function renderBlock(
     // ─── Lists ───
     case "bulleted_list_item": {
       const text = renderRichText(getRichText(content));
-      const childrenMd = children.length > 0
-        ? "\n" + await renderBlocks(children, { ...ctx, indent: ctx.indent + 1 })
-        : "";
+      const childrenMd =
+        children.length > 0
+          ? "\n" +
+            (await renderBlocks(children, { ...ctx, indent: ctx.indent + 1 }))
+          : "";
       return `${indent}- ${text}${childrenMd}`;
     }
     case "numbered_list_item": {
       const text = renderRichText(getRichText(content));
       const num = ctx.numberedListCounter;
-      const childrenMd = children.length > 0
-        ? "\n" + await renderBlocks(children, { ...ctx, indent: ctx.indent + 1 })
-        : "";
+      const childrenMd =
+        children.length > 0
+          ? "\n" +
+            (await renderBlocks(children, { ...ctx, indent: ctx.indent + 1 }))
+          : "";
       return `${indent}${num}. ${text}${childrenMd}`;
     }
     case "to_do": {
       const text = renderRichText(getRichText(content));
       const checked = content.checked === true;
-      const childrenMd = children.length > 0
-        ? "\n" + await renderBlocks(children, { ...ctx, indent: ctx.indent + 1 })
-        : "";
+      const childrenMd =
+        children.length > 0
+          ? "\n" +
+            (await renderBlocks(children, { ...ctx, indent: ctx.indent + 1 }))
+          : "";
       return `${indent}- [${checked ? "x" : " "}] ${text}${childrenMd}`;
     }
 
     // ─── Toggle ───
     case "toggle": {
       const text = renderRichText(getRichText(content));
-      const childrenMd = children.length > 0
-        ? await renderBlocks(children, { ...ctx, indent: 0 })
-        : "";
+      const childrenMd =
+        children.length > 0
+          ? await renderBlocks(children, { ...ctx, indent: 0 })
+          : "";
       return [
         `${indent}<details>`,
         `${indent}<summary>${text}</summary>`,
@@ -252,12 +268,14 @@ async function renderBlock(
     // ─── Quote ───
     case "quote": {
       const text = renderRichText(getRichText(content));
-      const childrenMd = children.length > 0
-        ? "\n" + (await renderBlocks(children, { ...ctx, indent: 0 }))
-          .split("\n")
-          .map((line) => `${indent}> ${line}`)
-          .join("\n")
-        : "";
+      const childrenMd =
+        children.length > 0
+          ? "\n" +
+            (await renderBlocks(children, { ...ctx, indent: 0 }))
+              .split("\n")
+              .map((line) => `${indent}> ${line}`)
+              .join("\n")
+          : "";
       const quotedText = text
         .split("\n")
         .map((line) => `${indent}> ${line}`)
@@ -271,12 +289,14 @@ async function renderBlock(
       const icon = content.icon as { type: string; emoji?: string } | undefined;
       const emoji = icon?.emoji ?? "";
       const prefix = emoji ? `${emoji} ` : "";
-      const childrenMd = children.length > 0
-        ? "\n" + (await renderBlocks(children, { ...ctx, indent: 0 }))
-          .split("\n")
-          .map((line) => `${indent}> ${line}`)
-          .join("\n")
-        : "";
+      const childrenMd =
+        children.length > 0
+          ? "\n" +
+            (await renderBlocks(children, { ...ctx, indent: 0 }))
+              .split("\n")
+              .map((line) => `${indent}> ${line}`)
+              .join("\n")
+          : "";
       return `${indent}> ${prefix}**${text}**${childrenMd}`;
     }
 
@@ -399,10 +419,10 @@ async function renderBlock(
 
     // ─── Link to page ───
     case "link_to_page": {
-      const pageId = (content.page_id as string) ??
-        (content.database_id as string) ?? "";
-      const slug = ctx.childPageSlugs?.get(pageId) ??
-        ctx.childDbSlugs?.get(pageId);
+      const pageId =
+        (content.page_id as string) ?? (content.database_id as string) ?? "";
+      const slug =
+        ctx.childPageSlugs?.get(pageId) ?? ctx.childDbSlugs?.get(pageId);
       if (slug) {
         return `${indent}[Page link](../${slug}/)`;
       }
@@ -446,7 +466,7 @@ async function renderTable(
   ctx: RenderContext,
 ): Promise<string> {
   const { children, content } = block;
-  const hasColumnHeader = content.has_column_header === true;
+  const _hasColumnHeader = content.has_column_header === true;
   const hasRowHeader = content.has_row_header === true;
   const indent = "  ".repeat(ctx.indent);
 
@@ -545,15 +565,26 @@ export function renderPropertyValue(prop: Record<string, unknown>): unknown {
       return rollup[rollupType] ?? null;
     }
     case "people": {
-      const people = prop.people as Array<{ name?: string; id: string }> | undefined;
+      const people = prop.people as
+        | Array<{ name?: string; id: string }>
+        | undefined;
       return people?.map((p) => p.name ?? p.id) ?? [];
     }
     case "files": {
-      const files = prop.files as Array<{ name: string; type: string; file?: { url: string }; external?: { url: string } }> | undefined;
-      return files?.map((f) => ({
-        name: f.name,
-        url: f.type === "file" ? f.file?.url : f.external?.url,
-      })) ?? [];
+      const files = prop.files as
+        | Array<{
+            name: string;
+            type: string;
+            file?: { url: string };
+            external?: { url: string };
+          }>
+        | undefined;
+      return (
+        files?.map((f) => ({
+          name: f.name,
+          url: f.type === "file" ? f.file?.url : f.external?.url,
+        })) ?? []
+      );
     }
     case "created_time":
       return prop.created_time ?? null;
@@ -564,7 +595,9 @@ export function renderPropertyValue(prop: Record<string, unknown>): unknown {
     case "last_edited_time":
       return prop.last_edited_time ?? null;
     case "last_edited_by": {
-      const leb = prop.last_edited_by as { id: string; name?: string } | undefined;
+      const leb = prop.last_edited_by as
+        | { id: string; name?: string }
+        | undefined;
       return leb?.name ?? leb?.id ?? null;
     }
     case "status": {
@@ -572,7 +605,9 @@ export function renderPropertyValue(prop: Record<string, unknown>): unknown {
       return status?.name ?? null;
     }
     case "unique_id": {
-      const uid = prop.unique_id as { prefix?: string; number: number } | undefined;
+      const uid = prop.unique_id as
+        | { prefix?: string; number: number }
+        | undefined;
       if (!uid) return null;
       return uid.prefix ? `${uid.prefix}-${uid.number}` : uid.number;
     }

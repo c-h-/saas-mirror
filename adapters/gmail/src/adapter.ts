@@ -15,24 +15,29 @@
 
 import type {
   Adapter,
-  SyncContext,
-  SyncResult,
-  SyncError,
-  OutputWriter,
   Logger,
+  OutputWriter,
+  SyncContext,
+  SyncError,
+  SyncResult,
 } from "@saas-mirror/core";
 import { createOutputWriter } from "@saas-mirror/core";
 
 import { GmailClient } from "./client.js";
 import { parseMessage } from "./mime.js";
+import type {
+  GmailConfig,
+  GmailLabel,
+  GmailMessage,
+  HistoryChanges,
+} from "./types.js";
 import {
-  writeMessage,
+  removeMessage,
   writeAttachments,
   writeLabels,
+  writeMessage,
   writeThreadView,
-  removeMessage,
 } from "./writer.js";
-import type { GmailConfig, GmailLabel, GmailMessage } from "./types.js";
 
 // ─── Config from environment ───
 
@@ -56,7 +61,10 @@ function loadConfig(): GmailConfig {
     maxAttachmentBytes: maxMb * 1024 * 1024,
     includeSpamTrash: process.env.GMAIL_INCLUDE_SPAM_TRASH === "true",
     includeDrafts: process.env.GMAIL_INCLUDE_DRAFTS === "true",
-    pageSize: Math.min(parseInt(process.env.GMAIL_BATCH_SIZE ?? "500", 10), 500),
+    pageSize: Math.min(
+      parseInt(process.env.GMAIL_BATCH_SIZE ?? "500", 10),
+      500,
+    ),
     concurrency: parseInt(process.env.GMAIL_CONCURRENCY ?? "2", 10),
   };
 }
@@ -91,13 +99,23 @@ export class GmailAdapter implements Adapter {
       // ── Route to sync strategy ──
       if (ctx.mode === "full" || !ctx.state.cursors.historyId) {
         const result = await this.fullSync(
-          ctx, config, client, writer, labelMap, errors,
+          ctx,
+          config,
+          client,
+          writer,
+          labelMap,
+          errors,
         );
         itemsSynced = result.synced;
         itemsFailed = result.failed;
       } else {
         const result = await this.incrementalSync(
-          ctx, config, client, writer, labelMap, errors,
+          ctx,
+          config,
+          client,
+          writer,
+          labelMap,
+          errors,
         );
         itemsSynced = result.synced;
         itemsFailed = result.failed;
@@ -105,7 +123,9 @@ export class GmailAdapter implements Adapter {
     } catch (err) {
       // Fatal errors (auth failures, etc.)
       const message = err instanceof Error ? err.message : String(err);
-      ctx.logger.error("Gmail sync failed with fatal error", { error: message });
+      ctx.logger.error("Gmail sync failed with fatal error", {
+        error: message,
+      });
       errors.push({ entity: "gmail", error: message, retryable: false });
     }
 
@@ -172,7 +192,12 @@ export class GmailAdapter implements Adapter {
 
       try {
         const result = await this.processMessage(
-          msgId, config, client, writer, labelMap, ctx.logger,
+          msgId,
+          config,
+          client,
+          writer,
+          labelMap,
+          ctx.logger,
         );
 
         if (result) {
@@ -211,7 +236,9 @@ export class GmailAdapter implements Adapter {
 
     // ── Phase 3: Generate thread views ──
 
-    ctx.logger.info("Generating thread views", { threads: threadMessages.size });
+    ctx.logger.info("Generating thread views", {
+      threads: threadMessages.size,
+    });
 
     for (const [threadId, messages] of threadMessages) {
       if (ctx.signal.aborted) break;
@@ -264,7 +291,7 @@ export class GmailAdapter implements Adapter {
     const startHistoryId = ctx.state.cursors.historyId;
     ctx.logger.info("Starting incremental sync", { startHistoryId });
 
-    let changes;
+    let changes: HistoryChanges;
     try {
       changes = await client.listHistoryChanges(startHistoryId, ctx.signal);
     } catch (err) {
@@ -275,7 +302,12 @@ export class GmailAdapter implements Adapter {
           { startHistoryId },
         );
         return this.differentialSync(
-          ctx, config, client, writer, labelMap, errors,
+          ctx,
+          config,
+          client,
+          writer,
+          labelMap,
+          errors,
         );
       }
       throw err;
@@ -300,7 +332,12 @@ export class GmailAdapter implements Adapter {
 
       try {
         const result = await this.processMessage(
-          msgId, config, client, writer, labelMap, ctx.logger,
+          msgId,
+          config,
+          client,
+          writer,
+          labelMap,
+          ctx.logger,
         );
         if (result) {
           if (!config.includeDrafts && result.labelIds.includes("DRAFT")) {
@@ -347,7 +384,12 @@ export class GmailAdapter implements Adapter {
 
       try {
         await this.processMessage(
-          change.messageId, config, client, writer, labelMap, ctx.logger,
+          change.messageId,
+          config,
+          client,
+          writer,
+          labelMap,
+          ctx.logger,
         );
       } catch (err) {
         ctx.logger.warn("Failed to update labels for message", {
@@ -422,7 +464,12 @@ export class GmailAdapter implements Adapter {
 
       try {
         const result = await this.processMessage(
-          msgId, config, client, writer, labelMap, ctx.logger,
+          msgId,
+          config,
+          client,
+          writer,
+          labelMap,
+          ctx.logger,
         );
         if (result) {
           if (!config.includeDrafts && result.labelIds.includes("DRAFT")) {
@@ -551,8 +598,8 @@ function isHistoryExpiredError(err: unknown): boolean {
  */
 function isRetryableError(err: unknown): boolean {
   if (err == null || typeof err !== "object") return false;
-  const code = (err as { code?: number }).code
-    ?? (err as { status?: number }).status;
+  const code =
+    (err as { code?: number }).code ?? (err as { status?: number }).status;
   if (code === 429 || (code !== undefined && code >= 500 && code < 600)) {
     return true;
   }

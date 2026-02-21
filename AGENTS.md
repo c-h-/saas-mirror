@@ -71,8 +71,11 @@ adapters/<name>/
 
 ```bash
 yarn build          # Compile all packages (explicit order)
-yarn typecheck      # Type check all packages
+yarn typecheck      # Type check all packages (uses tsc -b)
 yarn test           # Run all tests via vitest
+yarn lint           # Check formatting and lint rules (Biome)
+yarn lint:fix       # Auto-fix lint and formatting issues
+yarn test:integration  # Run integration tests (requires API credentials)
 yarn sync           # Incremental sync
 yarn sync:full      # Full hydration
 yarn daemon         # Long-running daemon mode
@@ -84,7 +87,7 @@ yarn daemon         # Long-running daemon mode
 - **ESM-only** (`"type": "module"` in all package.json files)
 - **vitest** for testing with workspace configuration
 - **Yarn 4.x** with Corepack for package management
-- **No linter configured yet** — code style is manual
+- **Biome** for linting and formatting (`biome.json` at root)
 
 ## Key Decisions
 

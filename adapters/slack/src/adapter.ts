@@ -7,27 +7,33 @@
 
 import type {
   Adapter,
-  SyncContext,
-  SyncResult,
-  SyncError,
-  OutputWriter,
   Logger,
+  OutputWriter,
+  SyncContext,
+  SyncError,
+  SyncResult,
 } from "@saas-mirror/core";
-import { withRetry, slugify, createOutputWriter, sanitizeFilename } from "@saas-mirror/core";
+import {
+  createOutputWriter,
+  sanitizeFilename,
+  slugify,
+  withRetry,
+} from "@saas-mirror/core";
 import { SlackApi } from "./api.js";
 import type {
+  ChannelExportData,
+  ChannelMap,
+  SlackAuthInfo,
   SlackChannel,
   SlackMessage,
   SlackSyncMetadata,
   UserMap,
-  ChannelMap,
-  ChannelExportData,
 } from "./types.js";
 import {
-  writeChannelOutput,
   appendChannelOutput,
-  writeUsersIndex,
+  writeChannelOutput,
   writeChannelsIndex,
+  writeUsersIndex,
 } from "./writer.js";
 
 // ─── Constants ───
@@ -52,7 +58,11 @@ export class SlackAdapter implements Adapter {
     const token = process.env.SLACK_BOT_TOKEN ?? process.env.SLACK_TOKEN;
     if (!token) {
       return errorResult(mode, startTime, [
-        { entity: "auth", error: "Missing SLACK_BOT_TOKEN environment variable", retryable: false },
+        {
+          entity: "auth",
+          error: "Missing SLACK_BOT_TOKEN environment variable",
+          retryable: false,
+        },
       ]);
     }
 
@@ -66,7 +76,7 @@ export class SlackAdapter implements Adapter {
 
     // Authenticate
     logger.info("Authenticating with Slack...");
-    let authInfo;
+    let authInfo: SlackAuthInfo;
     try {
       authInfo = await withRetry(() => api.authenticate(), { maxRetries: 2 });
     } catch (err) {
@@ -78,7 +88,10 @@ export class SlackAdapter implements Adapter {
         },
       ]);
     }
-    logger.info("Authenticated", { team: authInfo.teamName, teamId: authInfo.teamId });
+    logger.info("Authenticated", {
+      team: authInfo.teamName,
+      teamId: authInfo.teamId,
+    });
 
     // Load or initialize metadata
     const metadata = loadMetadata(state.metadata);
@@ -86,7 +99,15 @@ export class SlackAdapter implements Adapter {
     // Fetch users
     const userMap: UserMap = new Map();
     try {
-      await fetchAndMapUsers(api, userMap, writer, metadata, mode, logger, signal);
+      await fetchAndMapUsers(
+        api,
+        userMap,
+        writer,
+        metadata,
+        mode,
+        logger,
+        signal,
+      );
     } catch (err) {
       errors.push({
         entity: "users",
@@ -125,7 +146,9 @@ export class SlackAdapter implements Adapter {
       await writeUsersIndex(writer, userMap);
       await writeChannelsIndex(writer, channels, slugMap);
     } catch (err) {
-      logger.warn("Failed to write metadata indices", { error: errorMessage(err) });
+      logger.warn("Failed to write metadata indices", {
+        error: errorMessage(err),
+      });
     }
 
     // Update known channels
@@ -134,12 +157,15 @@ export class SlackAdapter implements Adapter {
 
     // Determine which channels to process
     const channelsToProcess = selectChannels(channels, metadata, mode);
-    logger.info(`Processing ${channelsToProcess.length} channels (mode: ${mode})`);
+    logger.info(
+      `Processing ${channelsToProcess.length} channels (mode: ${mode})`,
+    );
 
     // Process each channel with per-channel error isolation
     for (let i = 0; i < channelsToProcess.length; i++) {
       const channel = channelsToProcess[i]!;
-      const slug = slugMap.get(channel.id) ?? slugify(channel.name || channel.id);
+      const slug =
+        slugMap.get(channel.id) ?? slugify(channel.name || channel.id);
 
       throwIfAborted(signal);
 
@@ -166,12 +192,17 @@ export class SlackAdapter implements Adapter {
         errors.push(...channelResult.errors);
 
         // Mark channel as hydrated (for full sync resumability)
-        if (mode === "full" && !metadata.hydratedChannels.includes(channel.id)) {
+        if (
+          mode === "full" &&
+          !metadata.hydratedChannels.includes(channel.id)
+        ) {
           metadata.hydratedChannels.push(channel.id);
         }
 
         // Remove from failed list on success
-        metadata.failedChannels = metadata.failedChannels.filter((id) => id !== channel.id);
+        metadata.failedChannels = metadata.failedChannels.filter(
+          (id) => id !== channel.id,
+        );
       } catch (err) {
         itemsFailed++;
         const syncError: SyncError = {
@@ -180,9 +211,12 @@ export class SlackAdapter implements Adapter {
           retryable: isRetryableError(err),
         };
         errors.push(syncError);
-        logger.error(`Failed to process channel: ${channel.name || channel.id}`, {
-          error: errorMessage(err),
-        });
+        logger.error(
+          `Failed to process channel: ${channel.name || channel.id}`,
+          {
+            error: errorMessage(err),
+          },
+        );
 
         // Track failed channel for retry
         if (!metadata.failedChannels.includes(channel.id)) {
@@ -205,7 +239,9 @@ export class SlackAdapter implements Adapter {
     await state.checkpoint();
 
     const durationMs = Date.now() - startTime;
-    logger.info(`Sync complete: ${itemsSynced} synced, ${itemsFailed} failed in ${durationMs}ms`);
+    logger.info(
+      `Sync complete: ${itemsSynced} synced, ${itemsFailed} failed in ${durationMs}ms`,
+    );
 
     return {
       adapter: ADAPTER_NAME,
@@ -236,7 +272,7 @@ async function processChannel(
   metadata: SlackSyncMetadata,
   mode: "full" | "incremental",
   skipFiles: boolean,
-  token: string,
+  _token: string,
   logger: Logger,
   signal: AbortSignal,
 ): Promise<ChannelProcessResult> {
@@ -250,7 +286,7 @@ async function processChannel(
   // Determine oldest parameter for incremental
   const oldest =
     mode === "incremental"
-      ? metadata.channelHighWaterMark[channel.id] ?? undefined
+      ? (metadata.channelHighWaterMark[channel.id] ?? undefined)
       : undefined;
 
   // Fetch messages
@@ -264,7 +300,9 @@ async function processChannel(
       },
     );
   } catch (err) {
-    throw new Error(`Failed to fetch history for ${channelLabel}: ${errorMessage(err)}`);
+    throw new Error(
+      `Failed to fetch history for ${channelLabel}: ${errorMessage(err)}`,
+    );
   }
 
   logger.info(`Fetched ${messages.length} messages from ${channelLabel}`);
@@ -281,11 +319,12 @@ async function processChannel(
     try {
       const threadOldest =
         mode === "incremental"
-          ? metadata.threadHighWaterMark[parent.ts] ?? undefined
+          ? (metadata.threadHighWaterMark[parent.ts] ?? undefined)
           : undefined;
 
       const replies = await withRetry(
-        () => api.fetchThreadReplies(channel.id, parent.ts, signal, threadOldest),
+        () =>
+          api.fetchThreadReplies(channel.id, parent.ts, signal, threadOldest),
         {
           maxRetries: 2,
           retryOn: (err) => isRetryableError(err),
@@ -296,7 +335,7 @@ async function processChannel(
 
       // Update thread high water mark
       if (replies.length > 0) {
-        const latestReplyTs = replies[replies.length - 1]!.ts;
+        const latestReplyTs = replies[replies.length - 1]?.ts;
         const existingHwm = metadata.threadHighWaterMark[parent.ts];
         if (!existingHwm || latestReplyTs > existingHwm) {
           metadata.threadHighWaterMark[parent.ts] = latestReplyTs;
@@ -369,7 +408,7 @@ async function processChannel(
 
   // Update channel high water mark
   if (messages.length > 0) {
-    const latestTs = messages[messages.length - 1]!.ts;
+    const latestTs = messages[messages.length - 1]?.ts;
     const existingHwm = metadata.channelHighWaterMark[channel.id];
     if (!existingHwm || latestTs > existingHwm) {
       metadata.channelHighWaterMark[channel.id] = latestTs;
@@ -385,7 +424,7 @@ async function processChannel(
 async function fetchAndMapUsers(
   api: SlackApi,
   userMap: UserMap,
-  writer: OutputWriter,
+  _writer: OutputWriter,
   metadata: SlackSyncMetadata,
   mode: "full" | "incremental",
   logger: Logger,
@@ -394,7 +433,8 @@ async function fetchAndMapUsers(
   const shouldRefresh =
     mode === "full" ||
     !metadata.lastUsersRefreshAt ||
-    Date.now() - new Date(metadata.lastUsersRefreshAt).getTime() > USERS_REFRESH_INTERVAL_MS;
+    Date.now() - new Date(metadata.lastUsersRefreshAt).getTime() >
+      USERS_REFRESH_INTERVAL_MS;
 
   if (!shouldRefresh) {
     logger.info("Skipping user refresh (within interval)");
@@ -402,7 +442,9 @@ async function fetchAndMapUsers(
   }
 
   logger.info("Fetching users...");
-  const users = await withRetry(() => api.fetchAllUsers(signal), { maxRetries: 2 });
+  const users = await withRetry(() => api.fetchAllUsers(signal), {
+    maxRetries: 2,
+  });
 
   for (const user of users) {
     userMap.set(user.id, user);
@@ -425,7 +467,9 @@ async function fetchChannels(
     : "public_channel,private_channel,im,mpim";
 
   logger.info("Fetching channels...", { types });
-  const channels = await withRetry(() => api.fetchAllChannels(signal, types), { maxRetries: 2 });
+  const channels = await withRetry(() => api.fetchAllChannels(signal, types), {
+    maxRetries: 2,
+  });
   logger.info(`Fetched ${channels.length} channels`);
   return channels;
 }
@@ -465,7 +509,10 @@ function buildSlugMap(
   return slugMap;
 }
 
-function resolveImParticipants(channel: SlackChannel, userMap: UserMap): string[] {
+function resolveImParticipants(
+  channel: SlackChannel,
+  userMap: UserMap,
+): string[] {
   // IM channel name is often the user ID. Try to resolve it.
   const userId = channel.name || channel.id;
   const user = userMap.get(userId);
@@ -473,12 +520,18 @@ function resolveImParticipants(channel: SlackChannel, userMap: UserMap): string[
   return [name].filter(Boolean).sort();
 }
 
-function resolveMpimParticipants(channel: SlackChannel, userMap: UserMap): string[] {
+function resolveMpimParticipants(
+  channel: SlackChannel,
+  _userMap: UserMap,
+): string[] {
   // MPIM channel names look like "mpdm-user1--user2--user3-1"
   const match = channel.name.match(/^mpdm-(.*)-\d+$/);
-  if (match && match[1]) {
+  if (match?.[1]) {
     const parts = match[1].split("--");
-    return parts.map((p) => slugify(p)).filter(Boolean).sort();
+    return parts
+      .map((p) => slugify(p))
+      .filter(Boolean)
+      .sort();
   }
   return [slugify(channel.name || channel.id)];
 }

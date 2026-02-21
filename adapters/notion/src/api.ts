@@ -6,19 +6,19 @@
  * typed pagination helper used throughout the adapter.
  */
 
-import { Client, isNotionClientError, APIErrorCode } from "@notionhq/client";
+import { APIErrorCode, Client, isNotionClientError } from "@notionhq/client";
 import type {
-  SearchParameters,
-  SearchResponse,
-  ListBlockChildrenResponse,
-  QueryDatabaseResponse,
   GetDatabaseResponse,
   GetPageResponse,
-  ListUsersResponse,
+  ListBlockChildrenResponse,
   ListCommentsResponse,
+  ListUsersResponse,
+  QueryDatabaseResponse,
+  SearchParameters,
+  SearchResponse,
 } from "@notionhq/client/build/src/api-endpoints.js";
-import type { RateLimiter, Logger } from "@saas-mirror/core";
-import type { BlockTree, NotionComment, NotionRichText } from "./types.js";
+import type { Logger, RateLimiter } from "@saas-mirror/core";
+import type { BlockTree } from "./types.js";
 
 // ─── Constants ───
 
@@ -111,7 +111,7 @@ export class NotionApi {
 
   private backoffDelay(attempt: number): number {
     const delay = Math.min(
-      BASE_RETRY_DELAY_MS * Math.pow(2, attempt),
+      BASE_RETRY_DELAY_MS * 2 ** attempt,
       MAX_RETRY_DELAY_MS,
     );
     return delay + delay * 0.1 * Math.random();
@@ -122,7 +122,7 @@ export class NotionApi {
     const headers = (err as { headers?: Record<string, string> }).headers;
     if (headers?.["retry-after"]) {
       const val = parseFloat(headers["retry-after"]);
-      if (!isNaN(val)) return val;
+      if (!Number.isNaN(val)) return val;
     }
     return undefined;
   }
@@ -160,9 +160,10 @@ export class NotionApi {
       for (const item of response.results) {
         yield item;
       }
-      cursor = response.has_more && response.next_cursor
-        ? response.next_cursor
-        : undefined;
+      cursor =
+        response.has_more && response.next_cursor
+          ? response.next_cursor
+          : undefined;
     } while (cursor);
   }
 
@@ -195,7 +196,9 @@ export class NotionApi {
       sort: { direction: "descending", timestamp: "last_edited_time" },
     })) {
       const lastEdited =
-        "last_edited_time" in item ? (item as { last_edited_time: string }).last_edited_time : null;
+        "last_edited_time" in item
+          ? (item as { last_edited_time: string }).last_edited_time
+          : null;
       if (stopBefore && lastEdited && lastEdited < stopBefore) {
         return; // All subsequent items are older — stop
       }
@@ -256,7 +259,9 @@ export class NotionApi {
     visited = new Set<string>(),
   ): Promise<BlockTree[]> {
     if (depth > MAX_BLOCK_DEPTH) {
-      this.logger.warn(`Max block depth ${MAX_BLOCK_DEPTH} exceeded for block ${blockId}`);
+      this.logger.warn(
+        `Max block depth ${MAX_BLOCK_DEPTH} exceeded for block ${blockId}`,
+      );
       return [];
     }
     if (visited.has(blockId)) {
@@ -293,10 +298,16 @@ export class NotionApi {
 
       // Recursively fetch children — but skip child_page and child_database
       // blocks, which are synced separately by the tree walker
-      if (node.hasChildren && blockType !== "child_page" && blockType !== "child_database") {
+      if (
+        node.hasChildren &&
+        blockType !== "child_page" &&
+        blockType !== "child_database"
+      ) {
         // For synced_block references, fetch from the original block
         if (blockType === "synced_block" && typeContent.synced_from) {
-          const syncedFrom = typeContent.synced_from as { block_id: string } | null;
+          const syncedFrom = typeContent.synced_from as {
+            block_id: string;
+          } | null;
           if (syncedFrom?.block_id) {
             try {
               node.children = await this.fetchBlockTree(

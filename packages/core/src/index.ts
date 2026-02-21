@@ -1,37 +1,32 @@
 // Types
-export type {
-  Adapter,
-  AdapterState,
-  SyncContext,
-  SyncResult,
-  SyncError,
-  SyncEngineConfig,
-  AdapterRegistration,
-  RateLimiter,
-  RateLimiterConfig,
-  Logger,
-  OutputWriter,
-  PersistedState,
-} from "./types.js";
-
-// Rate limiter
-export { TokenBucketRateLimiter, createRateLimiter } from "./rate-limiter.js";
-
-// State management
-export { StateManager } from "./state.js";
-
-// Output writer
-export { FileOutputWriter, createOutputWriter } from "./output.js";
-
-// Retry helper
-export { withRetry } from "./retry.js";
-export type { RetryOptions } from "./retry.js";
-
-// Slug generator
-export { slugify, uniqueSlug, sanitizeFilename } from "./slugify.js";
-
-// Logger
-export { ConsoleLogger, createLogger } from "./logger.js";
 
 // Sync engine
 export { SyncEngine } from "./engine.js";
+// Logger
+export { ConsoleLogger, createLogger } from "./logger.js";
+// Output writer
+export { createOutputWriter, FileOutputWriter } from "./output.js";
+// Rate limiter
+export { createRateLimiter, TokenBucketRateLimiter } from "./rate-limiter.js";
+export type { RetryOptions } from "./retry.js";
+// Retry helper
+export { withRetry } from "./retry.js";
+
+// Slug generator
+export { sanitizeFilename, slugify, uniqueSlug } from "./slugify.js";
+// State management
+export { StateManager } from "./state.js";
+export type {
+  Adapter,
+  AdapterRegistration,
+  AdapterState,
+  Logger,
+  OutputWriter,
+  PersistedState,
+  RateLimiter,
+  RateLimiterConfig,
+  SyncContext,
+  SyncEngineConfig,
+  SyncError,
+  SyncResult,
+} from "./types.js";

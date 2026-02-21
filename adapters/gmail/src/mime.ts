@@ -40,19 +40,19 @@ function extractCharset(mimeType: string | undefined | null): string {
  */
 function normalizeCharsetLabel(charset: string): string {
   const map: Record<string, string> = {
-    "ascii": "utf-8",
+    ascii: "utf-8",
     "us-ascii": "utf-8",
     "windows-1252": "windows-1252",
-    "cp1252": "windows-1252",
+    cp1252: "windows-1252",
     "iso-8859-1": "windows-1252", // TextDecoder maps iso-8859-1 to windows-1252
-    "latin1": "windows-1252",
-    "gb2312": "gbk",
-    "gb_2312": "gbk",
-    "shift_jis": "shift_jis",
+    latin1: "windows-1252",
+    gb2312: "gbk",
+    gb_2312: "gbk",
+    shift_jis: "shift_jis",
     "euc-jp": "euc-jp",
     "euc-kr": "euc-kr",
     "iso-2022-jp": "iso-2022-jp",
-    "big5": "big5",
+    big5: "big5",
     "koi8-r": "koi8-r",
   };
   return map[charset] ?? charset;
@@ -92,7 +92,9 @@ function decodeBody(data: string, contentType?: string | null): string {
  *   - multipart/signed       (signed content + signature — we extract content)
  *   - Deeply nested combinations of the above
  */
-export function walkParts(part: gmail_v1.Schema$MessagePart | undefined | null): MimeWalkResult {
+export function walkParts(
+  part: gmail_v1.Schema$MessagePart | undefined | null,
+): MimeWalkResult {
   let plain = "";
   let html = "";
   const attachments: AttachmentMeta[] = [];

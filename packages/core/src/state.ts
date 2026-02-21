@@ -29,7 +29,7 @@ export class StateManager {
   private async writeToDisk(): Promise<void> {
     const dir = path.dirname(this.filePath);
     fs.mkdirSync(dir, { recursive: true });
-    const tmp = this.filePath + ".tmp";
+    const tmp = `${this.filePath}.tmp`;
     fs.writeFileSync(tmp, JSON.stringify(this.state, null, 2));
     fs.renameSync(tmp, this.filePath);
   }

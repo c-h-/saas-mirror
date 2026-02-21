@@ -1,7 +1,7 @@
-import { describe, it, expect } from "vitest";
-import { walkParts, getHeader, parseMessage, bodyToMarkdown } from "../mime.js";
-import type { GmailMessage, AttachmentMeta, MimeWalkResult } from "../types.js";
 import type { gmail_v1 } from "googleapis";
+import { describe, expect, it } from "vitest";
+import { bodyToMarkdown, getHeader, parseMessage, walkParts } from "../mime.js";
+import type { GmailMessage } from "../types.js";
 
 // ─── Helpers ───
 
@@ -118,9 +118,7 @@ function makeMultipartRelatedMessage(): gmail_v1.Schema$Message {
           mimeType: "text/html",
           body: {
             size: 50,
-            data: b64url(
-              '<p>Look at this:</p><img src="cid:img001" />',
-            ),
+            data: b64url('<p>Look at this:</p><img src="cid:img001" />'),
           },
         },
         {
@@ -375,9 +373,7 @@ describe("getHeader", () => {
     expect(getHeader(headers, "FROM")).toBe("alice@example.com");
     expect(getHeader(headers, "subject")).toBe("Test Subject");
     expect(getHeader(headers, "SUBJECT")).toBe("Test Subject");
-    expect(getHeader(headers, "content-type")).toBe(
-      "text/html; charset=utf-8",
-    );
+    expect(getHeader(headers, "content-type")).toBe("text/html; charset=utf-8");
   });
 
   it("returns empty string for missing headers", () => {
@@ -621,7 +617,8 @@ describe("bodyToMarkdown", () => {
       subject: "Test",
       date: "",
       messageId: "",
-      bodyHtml: "<h1>Title</h1><p>Paragraph with <strong>bold</strong> text.</p>",
+      bodyHtml:
+        "<h1>Title</h1><p>Paragraph with <strong>bold</strong> text.</p>",
       snippet: "Snippet",
       attachments: [],
       sizeEstimate: 0,
@@ -800,9 +797,7 @@ describe("walkParts - charset handling", () => {
   it("decodes standard UTF-8 content correctly", () => {
     const payload: gmail_v1.Schema$MessagePart = {
       mimeType: "text/plain",
-      headers: [
-        { name: "Content-Type", value: "text/plain; charset=utf-8" },
-      ],
+      headers: [{ name: "Content-Type", value: "text/plain; charset=utf-8" }],
       body: {
         size: 20,
         data: b64url("Hello, world! Caf\u00e9"),
@@ -816,9 +811,7 @@ describe("walkParts - charset handling", () => {
   it("handles ASCII charset (mapped to utf-8)", () => {
     const payload: gmail_v1.Schema$MessagePart = {
       mimeType: "text/plain",
-      headers: [
-        { name: "Content-Type", value: "text/plain; charset=ascii" },
-      ],
+      headers: [{ name: "Content-Type", value: "text/plain; charset=ascii" }],
       body: {
         size: 5,
         data: b64url("Hello"),

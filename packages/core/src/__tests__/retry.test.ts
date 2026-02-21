@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { withRetry } from "../retry.js";
 
 describe("withRetry", () => {
@@ -42,8 +42,7 @@ describe("withRetry", () => {
       .mockResolvedValue("ok");
     const result = await withRetry(fn, {
       baseDelayMs: 10,
-      retryOn: (err: unknown) =>
-        (err as { status?: number }).status === 503,
+      retryOn: (err: unknown) => (err as { status?: number }).status === 503,
     });
     expect(result).toBe("ok");
     expect(fn).toHaveBeenCalledTimes(2);

@@ -1,15 +1,14 @@
 import * as path from "node:path";
+import { createLogger } from "./logger.js";
+import { createOutputWriter } from "./output.js";
+import { createRateLimiter } from "./rate-limiter.js";
+import { StateManager } from "./state.js";
 import type {
-  Adapter,
   AdapterRegistration,
   SyncContext,
   SyncEngineConfig,
   SyncResult,
 } from "./types.js";
-import { createRateLimiter } from "./rate-limiter.js";
-import { StateManager } from "./state.js";
-import { createOutputWriter } from "./output.js";
-import { createLogger } from "./logger.js";
 
 export class SyncEngine {
   private readonly config: SyncEngineConfig;
@@ -64,7 +63,7 @@ export class SyncEngine {
       mode === "incremental" && !adapterState.lastSyncAt ? "full" : mode;
 
     const rateLimiter = createRateLimiter(rateLimiterConfig ?? {});
-    const outputWriter = createOutputWriter(outputDir);
+    const _outputWriter = createOutputWriter(outputDir);
 
     const ac = new AbortController();
 
