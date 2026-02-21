@@ -53,8 +53,10 @@ export class GogAdapter implements Adapter {
     const { mode, outputDir, state, logger, signal } = ctx;
 
     // Config
-    const account =
-      process.env.GOG_ACCOUNT ?? "charlie@kindo.ai";
+    const account = process.env.GOG_ACCOUNT;
+    if (!account) {
+      throw new Error("GOG_ACCOUNT environment variable is required");
+    }
     const gogPath = process.env.GOG_PATH;
 
     const cli = new GogCli(account, logger, gogPath);

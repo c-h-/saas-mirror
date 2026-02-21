@@ -3,7 +3,25 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Local replication of SaaS data for embedding/search",
+  "description": "Local replication of SaaS data (Slack, Notion, Linear, Gmail) into Markdown files for embedding, RAG, and semantic search",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/c-h-/saas-mirror.git"
+  },
+  "license": "MIT",
+  "keywords": [
+    "saas",
+    "sync",
+    "mirror",
+    "rag",
+    "embedding",
+    "slack",
+    "notion",
+    "linear",
+    "gmail",
+    "markdown",
+    "local-first"
+  ],
   "workspaces": [
     "packages/*",
     "adapters/*"

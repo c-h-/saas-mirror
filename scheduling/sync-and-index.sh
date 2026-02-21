@@ -4,16 +4,16 @@
 # Syncs all configured SaaS adapters, then re-indexes changed files.
 #
 # Setup: symlink the plist into ~/Library/LaunchAgents/ and load it:
-#   ln -sf ~/personal/saas-mirror/scheduling/com.kindo.saas-mirror.plist ~/Library/LaunchAgents/
-#   launchctl load ~/Library/LaunchAgents/com.kindo.saas-mirror.plist
+#   ln -sf /path/to/saas-mirror/scheduling/com.saas-mirror.sync.plist ~/Library/LaunchAgents/
+#   launchctl load ~/Library/LaunchAgents/com.saas-mirror.sync.plist
 #
 # Logs: /tmp/saas-mirror.log
-# Unload: launchctl unload ~/Library/LaunchAgents/com.kindo.saas-mirror.plist
+# Unload: launchctl unload ~/Library/LaunchAgents/com.saas-mirror.sync.plist
 
 set -euo pipefail
 
-MIRROR_DIR="$HOME/personal/saas-mirror"
-RETRIEVAL_DIR="$HOME/personal/retrieval-skill"
+MIRROR_DIR="${SAAS_MIRROR_DIR:-$HOME/saas-mirror}"
+RETRIEVAL_DIR="${RETRIEVAL_SKILL_DIR:-$HOME/retrieval-skill}"
 DATA_DIR="$MIRROR_DIR/data"
 LOCK_FILE="/tmp/saas-mirror.lock"
 LOG_PREFIX="[$(date '+%Y-%m-%d %H:%M:%S')]"

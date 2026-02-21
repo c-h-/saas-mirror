@@ -13,7 +13,7 @@ import type {
   GogMessageFull,
 } from "./types.js";
 
-const DEFAULT_GOG_PATH = "/opt/homebrew/bin/gog";
+const DEFAULT_GOG_PATH = "gog";
 
 export class GogCli {
   private readonly gogPath: string;
