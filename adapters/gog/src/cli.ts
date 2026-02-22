@@ -1,5 +1,5 @@
 /**
- * Wrapper around the `gog` CLI binary.
+ * Wrapper around the `gog` CLI binary (https://github.com/steipete/gogcli).
  *
  * All interactions with Gmail go through `gog` which handles OAuth
  * via its own keyring — no raw credentials needed.

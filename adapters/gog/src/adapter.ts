@@ -1,8 +1,8 @@
 /**
  * GOG Adapter — Gmail sync via the `gog` CLI.
  *
- * Uses `gog` (a Go CLI wrapping Gmail/Google APIs with its own
- * OAuth keyring) instead of raw googleapis credentials.
+ * Uses `gog` (an open-source Go CLI by steipete — https://github.com/steipete/gogcli)
+ * wrapping Gmail/Google APIs with its own OAuth keyring, instead of raw googleapis credentials.
  *
  * Supports full hydration and incremental sync via Gmail History API.
  */
