@@ -10,7 +10,7 @@ AI-powered search and retrieval work best on local, structured data. But your te
 
 ## Features
 
-- **5 adapters** — Slack, Notion, Linear, Gmail (OAuth2), GOG (Gmail via `gog` CLI -- experimental, see note below)
+- **5 adapters** — Slack, Notion, Linear, Gmail (OAuth2), GOG (Gmail via [`gog` CLI](https://github.com/steipete/gogcli))
 - **Full + incremental sync** — first run fetches everything; subsequent runs fetch only changes
 - **Crash-resumable** — state checkpointed after each batch; interrupted syncs resume where they left off
 - **Markdown output** — every document has YAML frontmatter + JSON sidecar for programmatic access
@@ -84,7 +84,7 @@ adapters/
   notion/           Notion Search + Blocks API
   linear/           Linear GraphQL API
   gmail/            Gmail REST API (OAuth2)
-  gog/              Gmail via gog CLI (experimental; gog is not publicly available)
+  gog/              Gmail via gog CLI (https://github.com/steipete/gogcli)
 scheduling/         launchd plist + sync script for automated runs
 data/               Local output directory (gitignored)
 ```
@@ -151,13 +151,9 @@ Copy `.env.example` to `.env.local` and fill in credentials for the services you
 | `GMAIL_BATCH_SIZE` | Messages per page (default: `500`, max: `500`) |
 | `GMAIL_CONCURRENCY` | Parallel message fetches (default: `2`) |
 
-### GOG (Gmail via `gog` CLI) -- Experimental
+### GOG (Gmail via `gog` CLI)
 
-> **Warning:** The `gog` CLI is a **private/internal tool** that is not publicly
-> available or documented. If you do not already have access to `gog`, you cannot
-> use this adapter. Use the [Gmail (OAuth2)](#gmail-oauth2) adapter instead.
-
-Uses the `gog` CLI to access Gmail. OAuth is handled by `gog`'s own keyring — no raw credentials needed.
+Uses the [`gog` CLI](https://github.com/steipete/gogcli) (an open-source Go CLI by steipete) to access Gmail. OAuth is handled by `gog`'s own keyring — no raw credentials needed.
 
 | Variable | Description |
 |----------|-------------|
