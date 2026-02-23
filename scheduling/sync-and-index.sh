@@ -12,8 +12,8 @@
 
 set -euo pipefail
 
-MIRROR_DIR="${SAAS_MIRROR_DIR:-$HOME/saas-mirror}"
-RETRIEVAL_DIR="${RETRIEVAL_SKILL_DIR:-$HOME/retrieval-skill}"
+MIRROR_DIR="${SAAS_MIRROR_DIR:-$HOME/personal/saas-mirror}"
+RETRIEVAL_DIR="${RETRIEVAL_SKILL_DIR:-$HOME/personal/retrieval-skill}"
 DATA_DIR="$MIRROR_DIR/data"
 LOCK_FILE="/tmp/saas-mirror.lock"
 LOG_PREFIX="[$(date '+%Y-%m-%d %H:%M:%S')]"
