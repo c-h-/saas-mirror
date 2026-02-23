@@ -230,6 +230,26 @@ If state is missing or expired, adapters automatically fall back to full sync.
 
 saas-mirror is a batch tool — it syncs and exits. Scheduling is handled externally.
 
+### macOS launchd (recommended)
+
+An installer script generates a launchd plist with correct absolute paths for your checkout:
+
+```bash
+# Install — generates plist, symlinks to ~/Library/LaunchAgents/, loads the service
+scheduling/setup.sh
+
+# Verify
+launchctl list | grep saas-mirror
+
+# Run immediately (outside the 30-min schedule)
+launchctl start com.saas-mirror.sync
+
+# Uninstall
+scheduling/setup.sh uninstall
+```
+
+The `sync-and-index.sh` script runs the sync, then optionally indexes the output into a vector store if `RETRIEVAL_SKILL_DIR` is set and an embedding server is running on `:8100`. See `.env.example` for details.
+
 ### Cron
 
 ```bash
@@ -239,24 +259,6 @@ saas-mirror is a batch tool — it syncs and exits. Scheduling is handled extern
 # Weekly full re-baseline
 0 2 * * 0 cd /path/to/saas-mirror && yarn sync:full >> /var/log/saas-mirror.log 2>&1
 ```
-
-### macOS launchd
-
-A sample plist is provided at `scheduling/com.saas-mirror.sync.plist`:
-
-```bash
-# Install
-ln -sf /path/to/saas-mirror/scheduling/com.saas-mirror.sync.plist ~/Library/LaunchAgents/
-launchctl load ~/Library/LaunchAgents/com.saas-mirror.sync.plist
-
-# Verify
-launchctl list | grep saas-mirror
-
-# Uninstall
-launchctl unload ~/Library/LaunchAgents/com.saas-mirror.sync.plist
-```
-
-The included `sync-and-index.sh` script chains sync with optional vector indexing when an embedding server is available.
 
 ## Adding a New Adapter
 
